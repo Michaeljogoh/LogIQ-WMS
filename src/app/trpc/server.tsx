@@ -3,17 +3,14 @@ import "server-only";
 import { createTRPCOptionsProxy } from "@trpc/tanstack-react-query";
 import { headers } from "next/headers";
 import { cache } from "react";
-import { createTRPCContext } from "./init";
+import { appRouter } from "@/server/api/root";
+import { createTRPCContextFromHeaders } from "@/server/api/trpc";
 import { makeQueryClient } from "./query-client";
-import { appRouter } from "./routers/_app";
 
 export const getQueryClient = cache(makeQueryClient);
 
 export const trpc = createTRPCOptionsProxy({
-  ctx: async () =>
-    createTRPCContext({
-      headers: await headers(),
-    }),
+  ctx: async () => createTRPCContextFromHeaders(await headers()),
   router: appRouter,
   queryClient: getQueryClient,
 });

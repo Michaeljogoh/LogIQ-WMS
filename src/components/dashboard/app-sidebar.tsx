@@ -1,20 +1,29 @@
-"use client"
+"use client";
 
-import * as React from "react"
-
-
-import { NavMain } from "./nav-main"
-import { NavProjects } from "./nav-projects"
-import { NavUser } from "./nav-user"
-import { TeamSwitcher } from "./team-switcher"
+import {
+  AudioLinesIcon,
+  BookOpenIcon,
+  BotIcon,
+  FrameIcon,
+  GalleryVerticalEndIcon,
+  MapIcon,
+  PieChartIcon,
+  Settings2Icon,
+  TerminalIcon,
+  TerminalSquareIcon,
+} from "lucide-react";
+import type * as React from "react";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
   SidebarRail,
-} from "@/components/ui/sidebar"
-import { GalleryVerticalEndIcon, AudioLinesIcon, TerminalIcon, TerminalSquareIcon, BotIcon, BookOpenIcon, Settings2Icon, FrameIcon, PieChartIcon, MapIcon } from "lucide-react"
+} from "@/components/ui/sidebar";
+import { NavMain } from "./nav-main";
+import { NavProjects } from "./nav-projects";
+import { NavUser } from "./nav-user";
+import { TeamSwitcher } from "./team-switcher";
 
 // This is sample data.
 const data = {
@@ -26,26 +35,17 @@ const data = {
   teams: [
     {
       name: "Acme Inc",
-      logo: (
-        <GalleryVerticalEndIcon
-        />
-      ),
+      logo: <GalleryVerticalEndIcon />,
       plan: "Enterprise",
     },
     {
       name: "Acme Corp.",
-      logo: (
-        <AudioLinesIcon
-        />
-      ),
+      logo: <AudioLinesIcon />,
       plan: "Startup",
     },
     {
       name: "Evil Corp.",
-      logo: (
-        <TerminalIcon
-        />
-      ),
+      logo: <TerminalIcon />,
       plan: "Free",
     },
   ],
@@ -53,10 +53,7 @@ const data = {
     {
       title: "Playground",
       url: "#",
-      icon: (
-        <TerminalSquareIcon
-        />
-      ),
+      icon: <TerminalSquareIcon />,
       isActive: true,
       items: [
         {
@@ -76,10 +73,7 @@ const data = {
     {
       title: "Models",
       url: "#",
-      icon: (
-        <BotIcon
-        />
-      ),
+      icon: <BotIcon />,
       items: [
         {
           title: "Genesis",
@@ -98,10 +92,7 @@ const data = {
     {
       title: "Documentation",
       url: "#",
-      icon: (
-        <BookOpenIcon
-        />
-      ),
+      icon: <BookOpenIcon />,
       items: [
         {
           title: "Introduction",
@@ -124,10 +115,7 @@ const data = {
     {
       title: "Settings",
       url: "#",
-      icon: (
-        <Settings2Icon
-        />
-      ),
+      icon: <Settings2Icon />,
       items: [
         {
           title: "General",
@@ -152,29 +140,20 @@ const data = {
     {
       name: "Design Engineering",
       url: "#",
-      icon: (
-        <FrameIcon
-        />
-      ),
+      icon: <FrameIcon />,
     },
     {
       name: "Sales & Marketing",
       url: "#",
-      icon: (
-        <PieChartIcon
-        />
-      ),
+      icon: <PieChartIcon />,
     },
     {
       name: "Travel",
       url: "#",
-      icon: (
-        <MapIcon
-        />
-      ),
+      icon: <MapIcon />,
     },
   ],
-}
+};
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
@@ -191,5 +170,5 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
-  )
+  );
 }
