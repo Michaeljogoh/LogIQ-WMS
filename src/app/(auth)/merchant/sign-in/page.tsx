@@ -1,10 +1,5 @@
+import { MerchantMagicLinkForm } from "@/components/auth/merchant-magic-link-form";
+
 export default function Page() {
-  return (
-    <div className="space-y-2 p-6">
-      <h1 className="text-lg font-semibold tracking-tight">Merchant sign in</h1>
-      <p className="text-sm text-muted-foreground">
-        Placeholder — implement per AGENTS.md module prompts.
-      </p>
-    </div>
-  );
+  return <MerchantMagicLinkForm />;
 }

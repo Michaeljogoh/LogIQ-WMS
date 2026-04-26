@@ -43,4 +43,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
+# prisma (custom output; generated on install — keep TS aware of it in-editor)
 /src/generated/prisma

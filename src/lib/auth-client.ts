@@ -1,6 +1,24 @@
 "use client";
 
-/**
- * better-auth client — implement in Module 2 (Authentication & Multi-Tenancy).
- */
-export const authClient = null as unknown;
+import {
+  customSessionClient,
+  genericOAuthClient,
+  magicLinkClient,
+  organizationClient,
+} from "better-auth/client/plugins";
+import { createAuthClient } from "better-auth/react";
+
+const baseURL =
+  typeof window !== "undefined"
+    ? window.location.origin
+    : (process.env.NEXT_PUBLIC_APP_URL ?? "");
+
+export const authClient = createAuthClient({
+  baseURL,
+  plugins: [
+    organizationClient(),
+    magicLinkClient(),
+    genericOAuthClient(),
+    customSessionClient(),
+  ],
+});

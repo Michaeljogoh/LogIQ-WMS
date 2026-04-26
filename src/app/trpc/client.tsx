@@ -45,6 +45,12 @@ export function TRPCReactProvider(
       links: [
         httpBatchLink({
           url: getUrl(),
+          fetch(url, options) {
+            return fetch(url, {
+              ...options,
+              credentials: "include",
+            });
+          },
         }),
       ],
     }),
