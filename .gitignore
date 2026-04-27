@@ -10,8 +10,9 @@
 !.yarn/releases
 !.yarn/versions
 
-.AGENTS.md
-.CLAUDE.md
+/AGENTS.md
+/CLAUDE.md
+/.cursor/
 
 # testing
 /coverage
