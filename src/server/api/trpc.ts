@@ -4,23 +4,34 @@ import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { parseWarehouseAssignments } from "@/server/helpers/warehouse-assignments";
 
+type SessionUser = {
+  id: string;
+  accountId?: string | null;
+  systemRole?: string | null;
+  managedWarehouseIds?: string[] | null;
+  warehouseAssignments?: string | null;
+  merchantId?: string | null;
+  merchantPermissions?: string[] | null;
+};
+
 export const createTRPCContext = async (opts: { req: Request }) => {
   const session = await auth.api.getSession({ headers: opts.req.headers });
+  const user = session?.user as SessionUser | undefined;
   const warehouseAssignments = parseWarehouseAssignments(
-    (session as any)?.user?.warehouseAssignments,
+    user?.warehouseAssignments,
   );
 
   return {
     db,
-    userId: (session as any)?.user?.id ?? null,
-    accountId: (session as any)?.user?.accountId ?? null,
-    systemRole: (session as any)?.user?.systemRole ?? null,
-    managedWarehouseIds: ((session as any)?.user?.managedWarehouseIds ??
-      []) as string[],
+    req: opts.req,
+    session,
+    userId: user?.id ?? null,
+    accountId: user?.accountId ?? null,
+    systemRole: user?.systemRole ?? null,
+    managedWarehouseIds: (user?.managedWarehouseIds ?? []) as string[],
     warehouseAssignments,
-    merchantId: (session as any)?.user?.merchantId ?? null,
-    merchantPermissions: ((session as any)?.user?.merchantPermissions ??
-      []) as string[],
+    merchantId: user?.merchantId ?? null,
+    merchantPermissions: (user?.merchantPermissions ?? []) as string[],
   };
 };
 
@@ -44,7 +55,7 @@ const t = initTRPC
     },
   });
 
-const enforceAuth = t.middleware(({ ctx, next }) => {
+const enforceLinkedTenant = t.middleware(({ ctx, next }) => {
   if (!ctx.userId || !ctx.accountId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
@@ -58,10 +69,23 @@ const enforceAuth = t.middleware(({ ctx, next }) => {
   });
 });
 
+const enforceAuthedUser = t.middleware(({ ctx, next }) => {
+  if (!ctx.userId) {
+    throw new TRPCError({ code: "UNAUTHORIZED" });
+  }
+
+  return next({
+    ctx: {
+      ...ctx,
+      userId: ctx.userId,
+    },
+  });
+});
+
 export const requireRole = (...roles: string[]) =>
   t.middleware(({ ctx, next }) => {
     if (
-      ctx.systemRole !== "platform_admin" &&
+      ctx.systemRole !== "PLATFORM_ADMIN" &&
       !roles.includes(ctx.systemRole ?? "")
     ) {
       throw new TRPCError({ code: "FORBIDDEN" });
@@ -77,7 +101,10 @@ export const requireWarehousePermission = (
   t.middleware(({ ctx, next }) => {
     const { systemRole, managedWarehouseIds, warehouseAssignments } = ctx;
 
-    if (systemRole === "platform_admin" || systemRole === "OPERATOR_OWNER") {
+    if (
+      systemRole === "PLATFORM_ADMIN" ||
+      systemRole === "THREEPL_ACCOUNT_OWNER"
+    ) {
       return next({ ctx });
     }
 
@@ -107,7 +134,10 @@ export const requireMerchantPermission = (
   t.middleware(({ ctx, next }) => {
     const { systemRole, merchantPermissions } = ctx;
 
-    if (systemRole === "platform_admin" || systemRole === "OPERATOR_OWNER") {
+    if (
+      systemRole === "PLATFORM_ADMIN" ||
+      systemRole === "THREEPL_ACCOUNT_OWNER"
+    ) {
       return next({ ctx });
     }
 
@@ -127,9 +157,9 @@ export const requireMerchantPermission = (
 
 export const router = t.router;
 export const publicProc = t.procedure;
-export const protectedProc = t.procedure.use(enforceAuth);
+export const protectedProc = t.procedure.use(enforceLinkedTenant);
+export const authedProc = t.procedure.use(enforceAuthedUser);
 
-// Backward-compatible aliases for the existing app router scaffolding.
 export const createTRPCRouter = router;
 export const baseProcedure = publicProc;
 export const createCallerFactory = t.createCallerFactory;

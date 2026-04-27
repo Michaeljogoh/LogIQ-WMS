@@ -130,7 +130,7 @@ Copy the block below verbatim at the start of every AI coding session before pas
 >
 > **Operator Tier** (3PL account-scoped)
 >
-> - `operator_owner` — full access within their account
+> - `threepl_account_owner` — full access within their account
 > - `warehouse_manager` — manages assigned warehouses: inventory, inbound, outbound, reports, staff assignment
 >
 > **Warehouse Tier** (per-warehouse, configurable permissions)
@@ -497,8 +497,11 @@ export const requireWarehousePermission = (
   t.middleware(({ ctx, next }) => {
     const { systemRole, managedWarehouseIds, warehouseAssignments } = ctx;
 
-    // platform_admin and operator_owner always pass
-    if (systemRole === "platform_admin" || systemRole === "OPERATOR_OWNER")
+    // platform_admin and threepl_account_owner always pass
+    if (
+      systemRole === "platform_admin" ||
+      systemRole === "THREEPL_ACCOUNT_OWNER"
+    )
       return next({ ctx });
 
     // warehouse_manager passes for their assigned warehouses
@@ -527,7 +530,10 @@ export const requireMerchantPermission = (
   t.middleware(({ ctx, next }) => {
     const { systemRole, merchantPermissions } = ctx;
 
-    if (systemRole === "platform_admin" || systemRole === "OPERATOR_OWNER")
+    if (
+      systemRole === "platform_admin" ||
+      systemRole === "THREEPL_ACCOUNT_OWNER"
+    )
       return next({ ctx });
 
     // merchant_owner implicitly has all permissions
@@ -611,7 +617,7 @@ export const auth = betterAuth({
       // are configurable and stored in DB, not hardcoded here.
       roles: {
         platform_admin: { permissions: ["*"] },
-        operator_owner: { permissions: ["*"] },
+        threepl_account_owner: { permissions: ["*"] },
         warehouse_manager: {
           permissions: [
             "inventory",
@@ -720,7 +726,7 @@ model WarehouseManager {
   accountId   String
   userId      String      // AccountUser.id (must have systemRole = WAREHOUSE_MANAGER)
   warehouseId String
-  assignedBy  String      // AccountUser.id of the operator_owner
+  assignedBy  String      // AccountUser.id of the threepl_account_owner
   assignedAt  DateTime    @default(now())
   user        AccountUser @relation(fields: [userId], references: [id])
   warehouse   Warehouse   @relation(fields: [warehouseId], references: [id])
@@ -733,7 +739,7 @@ enum Plan { STARTER GROWTH ENTERPRISE }
 
 enum SystemRole {
   PLATFORM_ADMIN
-  OPERATOR_OWNER
+  THREEPL_ACCOUNT_OWNER
   WAREHOUSE_MANAGER
   WAREHOUSE_STAFF
   MERCHANT_OWNER
@@ -782,7 +788,7 @@ model Warehouse {
 | Merchant invite (first owner) | Operator calls `merchant.create` — creates `Merchant` row + `MerchantUser` with `systemRole=MERCHANT_OWNER`. System calls `auth.api.sendMagicLink`. Merchant clicks link, better-auth account created, role auto-set.                                                                                                                                                                                              |
 | Merchant user invite          | `merchant_owner` calls `merchantUser.invite` — creates `MerchantUser` with `systemRole=MERCHANT_USER` and chosen `permissions[]`. System sends magic link.                                                                                                                                                                                                                                                         |
 | Merchant permission update    | `merchant_owner` calls `merchantUser.update` — updates `MerchantUser.permissions[]`. Session is invalidated so the user's next request picks up the new permissions.                                                                                                                                                                                                                                               |
-| Staff assignment              | `warehouse_manager` (or `operator_owner`) calls `warehouseStaff.assign` — creates `WarehouseStaffAssignment` with chosen `permissions[]`. Staff member must have `systemRole=WAREHOUSE_STAFF`.                                                                                                                                                                                                                     |
+| Staff assignment              | `warehouse_manager` (or `threepl_account_owner`) calls `warehouseStaff.assign` — creates `WarehouseStaffAssignment` with chosen `permissions[]`. Staff member must have `systemRole=WAREHOUSE_STAFF`.                                                                                                                                                                                                              |
 | Staff permission update       | `warehouse_manager` calls `warehouseStaff.update` — updates `WarehouseStaffAssignment.permissions[]`. Session invalidated.                                                                                                                                                                                                                                                                                         |
 | Warehouse manager scope       | Every inbound/outbound/inventory tRPC procedure for `WAREHOUSE_MANAGER` checks `WarehouseManager` table to confirm they manage the target `warehouseId`.                                                                                                                                                                                                                                                           |
 | Staff warehouse scope         | Every pick/pack/receive tRPC procedure checks `WarehouseStaffAssignment` to confirm the staff member has the required permission in the target warehouse.                                                                                                                                                                                                                                                          |
@@ -791,17 +797,17 @@ model Warehouse {
 
 ## 4.5 Required Pages
 
-| Route                             | Access             | Description                                                                                                                   |
-| :-------------------------------- | :----------------- | :---------------------------------------------------------------------------------------------------------------------------- |
-| `/sign-in`                        | Public             | Email/password + Google OAuth + UPS OAuth sign-in                                                                             |
-| `/sign-up`                        | Public             | 3PL operator registration — creates user + organisation + Account row                                                         |
-| `/onboarding`                     | `operator_owner`   | 3-step wizard: account details → first warehouse → invite team                                                                |
-| `/dashboard`                      | All operator roles | App shell: sidebar nav, user menu, org switcher                                                                               |
-| `/settings/users`                 | `operator_owner`   | Invite operators, assign `warehouse_manager` or `warehouse_staff` systemRole, revoke access                                   |
-| `/settings/users/[id]/warehouses` | `operator_owner`   | Assign warehouse_manager to warehouses; assign warehouse_staff to warehouses + set permissions (PICK/PACK/RECEIVE checkboxes) |
-| `/settings/warehouses`            | `operator_owner`   | CRUD warehouses, timezone, activate/deactivate                                                                                |
-| `/merchant/sign-in`               | Public             | Magic-link sign-in for merchant users                                                                                         |
-| `/portal/team`                    | `merchant_owner`   | Invite merchant_users, set permissions (READ/WRITE/BILLING checkboxes), revoke access                                         |
+| Route                             | Access                  | Description                                                                                                                   |
+| :-------------------------------- | :---------------------- | :---------------------------------------------------------------------------------------------------------------------------- |
+| `/sign-in`                        | Public                  | Email/password + Google OAuth + UPS OAuth sign-in                                                                             |
+| `/sign-up`                        | Public                  | 3PL operator registration — creates user + organisation + Account row                                                         |
+| `/onboarding`                     | `threepl_account_owner` | 3-step wizard: account details → first warehouse → invite team                                                                |
+| `/dashboard`                      | All operator roles      | App shell: sidebar nav, user menu, org switcher                                                                               |
+| `/settings/users`                 | `threepl_account_owner` | Invite operators, assign `warehouse_manager` or `warehouse_staff` systemRole, revoke access                                   |
+| `/settings/users/[id]/warehouses` | `threepl_account_owner` | Assign warehouse_manager to warehouses; assign warehouse_staff to warehouses + set permissions (PICK/PACK/RECEIVE checkboxes) |
+| `/settings/warehouses`            | `threepl_account_owner` | CRUD warehouses, timezone, activate/deactivate                                                                                |
+| `/merchant/sign-in`               | Public                  | Magic-link sign-in for merchant users                                                                                         |
+| `/portal/team`                    | `merchant_owner`        | Invite merchant_users, set permissions (READ/WRITE/BILLING checkboxes), revoke access                                         |
 
 ---
 
@@ -2666,13 +2672,13 @@ export async function runNLQuery(accountId: string, queryText: string) {
 
 ## 17.4 BullMQ Nightly Jobs
 
-| Job                      | Schedule          | Action                                                                                                                            |
-| :----------------------- | :---------------- | :-------------------------------------------------------------------------------------------------------------------------------- |
-| `logiq.stockoutScan`     | Every 6 hours     | Compute 14-day velocity per SKU. Create `STOCKOUT_RISK` insight if `daysOfStockRemaining < 7`.                                    |
-| `logiq.overstockScan`    | Daily 02:00 UTC   | Find StockLevels with `quantity > 0` and no movement for `deadStockDays`. Create `OVERSTOCK` insight with carrying cost.          |
-| `logiq.carrierScorecard` | Daily 03:00 UTC   | Aggregate CarrierPerformanceLog. Score = `onTimeRate×0.5 + (1-damageRate)×0.3 + costEfficiency×0.2`. Upsert CarrierScorecard.     |
-| `logiq.capacityForecast` | Daily 04:00 UTC   | Run exponential smoothing per warehouse. Cache in Redis 24h. Create `CAPACITY_WARNING` if any day > historical_max × 0.9.         |
-| `logiq.insightDigest`    | Daily 07:00 local | Bundle unacknowledged CRITICAL+WARNING insights from past 24h. Send email digest via Resend to operator_owner and operator_admin. |
+| Job                      | Schedule          | Action                                                                                                                                   |
+| :----------------------- | :---------------- | :--------------------------------------------------------------------------------------------------------------------------------------- |
+| `logiq.stockoutScan`     | Every 6 hours     | Compute 14-day velocity per SKU. Create `STOCKOUT_RISK` insight if `daysOfStockRemaining < 7`.                                           |
+| `logiq.overstockScan`    | Daily 02:00 UTC   | Find StockLevels with `quantity > 0` and no movement for `deadStockDays`. Create `OVERSTOCK` insight with carrying cost.                 |
+| `logiq.carrierScorecard` | Daily 03:00 UTC   | Aggregate CarrierPerformanceLog. Score = `onTimeRate×0.5 + (1-damageRate)×0.3 + costEfficiency×0.2`. Upsert CarrierScorecard.            |
+| `logiq.capacityForecast` | Daily 04:00 UTC   | Run exponential smoothing per warehouse. Cache in Redis 24h. Create `CAPACITY_WARNING` if any day > historical_max × 0.9.                |
+| `logiq.insightDigest`    | Daily 07:00 local | Bundle unacknowledged CRITICAL+WARNING insights from past 24h. Send email digest via Resend to threepl_account_owner and operator_admin. |
 
 ## 17.5 Billing Anomaly Detector
 
@@ -2819,14 +2825,14 @@ export async function runNLQuery(accountId: string, queryText: string) {
 
 - All AI-generated insights (from Features 2, 3, 5) surface in the `InsightFeed` at `/logiq`
 - Insights are severity-badged: INFO / WARNING / CRITICAL
-- Every day at 07:00 local time — BullMQ bundles all unacknowledged CRITICAL + WARNING insights from the past 24 hours and emails them as a digest via Resend to `operator_owner`
+- Every day at 07:00 local time — BullMQ bundles all unacknowledged CRITICAL + WARNING insights from the past 24 hours and emails them as a digest via Resend to `threepl_account_owner`
 - Operator acknowledges insights individually — timestamp and user recorded on each
 
 ---
 
 ## 17.9 Who Benefits Most — Role Benefit Map
 
-### `operator_owner` — All 7 Features
+### `threepl_account_owner` — All 7 Features
 
 | Feature                | How They Use It                                               |
 | :--------------------- | :------------------------------------------------------------ |
@@ -2874,12 +2880,12 @@ The AI layer is not surfaced to floor staff. Their interfaces (pick, pack, recei
 
 ### Summary
 
-| Role                | Features | Primary Value                                |
-| :------------------ | :------- | :------------------------------------------- |
-| `operator_owner`    | All 7    | Operations intelligence + revenue protection |
-| `warehouse_manager` | 4        | Staff planning + inventory alerts            |
-| `merchant_owner`    | 2        | Self-service data questions + fair billing   |
-| `warehouse_staff`   | 0        | Not applicable — floor operations only       |
+| Role                    | Features | Primary Value                                |
+| :---------------------- | :------- | :------------------------------------------- |
+| `threepl_account_owner` | All 7    | Operations intelligence + revenue protection |
+| `warehouse_manager`     | 4        | Staff planning + inventory alerts            |
+| `merchant_owner`        | 2        | Self-service data questions + fair billing   |
+| `warehouse_staff`       | 0        | Not applicable — floor operations only       |
 
 > The AI is **operator-first by design** — it reads across all modules and all merchants to give the 3PL operator a complete picture of their business. Merchants get a lighter, scoped version through the chat widget.
 

@@ -1,3 +1,5 @@
+import { headers } from "next/headers";
+import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
 import {
   Breadcrumb,
@@ -11,12 +13,34 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from "@/components/ui/sidebar";
+import { auth } from "@/lib/auth";
 
-export default function DashboardLayout({
+export default async function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth.api.getSession({ headers: await headers() });
+  if (!session?.user) {
+    redirect("/sign-in");
+  }
+
+  const user = session.user as {
+    accountId?: string | null;
+    systemRole?: string | null;
+  };
+
+  if (!user.accountId) {
+    redirect("/sign-in");
+  }
+
+  if (
+    user.systemRole === "MERCHANT_OWNER" ||
+    user.systemRole === "MERCHANT_USER"
+  ) {
+    redirect("/portal/dashboard");
+  }
+
   return (
     <SidebarProvider>
       <AppSidebar />

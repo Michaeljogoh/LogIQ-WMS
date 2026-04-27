@@ -1,9 +1,52 @@
 import { z } from "zod";
-import { baseProcedure, createTRPCRouter } from "../init";
+import { requireLinkedTenant } from "@/server/api/ctx-ids";
+import { accountUserRouter } from "@/server/api/routers/account-user";
+import { merchantRouter } from "@/server/api/routers/merchant";
+import { merchantUserRouter } from "@/server/api/routers/merchant-user";
+import { warehouseRouter } from "@/server/api/routers/warehouse";
+import { warehouseStaffRouter } from "@/server/api/routers/warehouse-staff";
+import {
+  authedProc,
+  baseProcedure,
+  createTRPCRouter,
+  protectedProc,
+  requireRole,
+} from "../init";
 import { postRouter } from "./post";
 
 export const appRouter = createTRPCRouter({
   post: postRouter,
+  accountUser: accountUserRouter,
+  merchant: merchantRouter,
+  merchantUser: merchantUserRouter,
+  warehouse: warehouseRouter,
+  warehouseStaff: warehouseStaffRouter,
+  session: authedProc.query(async ({ ctx }) => {
+    return ctx.session;
+  }),
+  operatorProfile: protectedProc
+    .use(
+      requireRole(
+        "THREEPL_ACCOUNT_OWNER",
+        "WAREHOUSE_MANAGER",
+        "WAREHOUSE_STAFF",
+        "PLATFORM_ADMIN",
+      ),
+    )
+    .query(async ({ ctx }) => {
+      const { userId } = requireLinkedTenant(ctx);
+      const profile = await ctx.db.accountUser.findUnique({
+        where: { betterAuthUserId: userId },
+      });
+      if (!profile) {
+        return null;
+      }
+      const account = await ctx.db.logiqAccount.findUnique({
+        where: { id: profile.accountId },
+        select: { id: true, name: true, slug: true, plan: true },
+      });
+      return { profile, account };
+    }),
   hello: baseProcedure
     .input(
       z.object({
