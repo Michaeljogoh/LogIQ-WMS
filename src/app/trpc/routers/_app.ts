@@ -8,6 +8,10 @@ import { integrationRouter } from "@/server/api/routers/integration";
 import { invoiceRouter } from "@/server/api/routers/invoice";
 import { merchantRouter } from "@/server/api/routers/merchant";
 import { merchantUserRouter } from "@/server/api/routers/merchant-user";
+import {
+  escalationRouter,
+  notificationsRouter,
+} from "@/server/api/routers/notification";
 import { orderRouter } from "@/server/api/routers/order";
 import { pickListRouter } from "@/server/api/routers/pick-list";
 import { purchaseOrderRouter } from "@/server/api/routers/purchase-order";
@@ -32,6 +36,9 @@ export const appRouter = createTRPCRouter({
   accountUser: accountUserRouter,
   merchant: merchantRouter,
   merchantUser: merchantUserRouter,
+  notifications: notificationsRouter,
+  escalation: escalationRouter,
+  notification: notificationsRouter,
   warehouse: warehouseRouter,
   warehouseStaff: warehouseStaffRouter,
   product: productRouter,

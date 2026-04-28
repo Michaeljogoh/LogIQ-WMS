@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import { NotificationBell } from "@/components/shared/notification-bell";
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -60,6 +61,9 @@ export default async function DashboardLayout({
               </BreadcrumbItem>
             </BreadcrumbList>
           </Breadcrumb>
+          <div className="ml-auto">
+            <NotificationBell />
+          </div>
         </header>
         <div className="flex flex-1 flex-col">{children}</div>
       </SidebarInset>

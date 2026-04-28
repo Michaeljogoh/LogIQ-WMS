@@ -155,6 +155,10 @@ model LogiqAccount {
   apiKeys       ApiKey[]
   webhookEndpoints WebhookEndpoint[]
   integrationSyncLogs IntegrationSyncLog[]
+  notifications Notification[]
+  notificationPreferences NotificationPreference[]
+  escalationRules EscalationRule[]
+  pushSubscriptions PushSubscription[]
 
   @@map("logiq_account")
 }
@@ -926,6 +930,82 @@ model IntegrationSyncLog {
   @@map("integration_sync_log")
 }
 
+model Notification {
+  id         String               @id @default(cuid())
+  accountId  String
+  userId     String?
+  merchantId String?
+  type       NotificationType
+  severity   NotificationSeverity @default(INFO)
+  title      String
+  body       String
+  data       Json?
+  channel    NotificationChannel
+  readAt     DateTime?
+  sentAt     DateTime?
+  failedAt   DateTime?
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  account LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, userId, readAt])
+  @@map("notification")
+}
+
+model NotificationPreference {
+  id        String   @id @default(cuid())
+  userId    String
+  accountId String
+  type      NotificationType
+  inApp     Boolean  @default(true)
+  email     Boolean  @default(true)
+  slack     Boolean  @default(false)
+  sms       Boolean  @default(false)
+  push      Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  account LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type])
+  @@index([accountId, userId])
+  @@map("notification_preference")
+}
+
+model EscalationRule {
+  id               String               @id @default(cuid())
+  accountId        String
+  severity         NotificationSeverity
+  ackWindowMinutes Int                  @default(120)
+  escalateTo       String[]
+  escalateViaSms   Boolean              @default(true)
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
+
+  account LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, severity])
+  @@index([accountId])
+  @@map("escalation_rule")
+}
+
+model PushSubscription {
+  id           String   @id @default(cuid())
+  accountId    String
+  userId       String
+  endpoint     String
+  subscription Json
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  account LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, endpoint])
+  @@index([accountId, userId])
+  @@map("push_subscription")
+}
+
 model CycleCount {
   id            String      @id @default(cuid())
   accountId     String
@@ -1121,4 +1201,33 @@ enum IntegrationStatus {
   CONNECTED
   DISCONNECTED
   ERROR
+}
+
+enum NotificationType {
+  LOW_STOCK
+  DEAD_STOCK
+  STOCKOUT_RISK
+  SLA_BREACH
+  ORDER_EXCEPTION
+  SHIPMENT_DELIVERED
+  INVOICE_GENERATED
+  INVOICE_OVERDUE
+  CYCLE_COUNT_DUE
+  PO_OVERDUE
+  CARRIER_EXCEPTION
+  CAPACITY_WARNING
+}
+
+enum NotificationSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  SLACK
+  SMS
+  PUSH
 }
