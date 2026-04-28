@@ -10,14 +10,7 @@ import { Input } from "@/components/ui/input";
 export default function Page() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const dashboardQuery = useQuery(trpc.merchant.portalDashboard.queryOptions());
-  const merchantId = dashboardQuery.data?.latestInvoice?.merchantId;
-  const invoicesQuery = useQuery(
-    trpc.invoice.listByMerchant.queryOptions(
-      { merchantId: merchantId ?? "" },
-      { enabled: Boolean(merchantId) },
-    ),
-  );
+  const invoicesQuery = useQuery(trpc.invoice.listMine.queryOptions());
   const [reason, setReason] = useState("");
   const [invoiceId, setInvoiceId] = useState("");
   const dispute = useMutation(
@@ -25,11 +18,17 @@ export default function Page() {
       onSuccess: async () => {
         setReason("");
         await queryClient.invalidateQueries(
-          trpc.invoice.listByMerchant.queryFilter({ merchantId: merchantId ?? "" }),
+          trpc.invoice.listMine.queryFilter(),
         );
       },
     }),
   );
+  const invoices = (invoicesQuery.data ?? []) as Array<{
+    id: string;
+    invoiceNumber: string;
+    totalCents: number;
+    status: string;
+  }>;
 
   return (
     <div className="space-y-6 p-6">
@@ -38,17 +37,18 @@ export default function Page() {
           <CardTitle>Invoice history</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2 text-sm">
-          {invoicesQuery.data?.map((invoice) => (
+          {invoices.map((invoice) => (
             <button
               key={invoice.id}
               type="button"
               className="block text-left hover:underline"
               onClick={() => setInvoiceId(invoice.id)}
             >
-              {invoice.invoiceNumber} - ${(invoice.totalCents / 100).toFixed(2)} ({invoice.status})
+              {invoice.invoiceNumber} - ${(invoice.totalCents / 100).toFixed(2)}{" "}
+              ({invoice.status})
             </button>
           ))}
-          {!invoicesQuery.data?.length ? <p>No invoices available.</p> : null}
+          {!invoices.length ? <p>No invoices available.</p> : null}
         </CardContent>
       </Card>
       <Card>
@@ -56,11 +56,21 @@ export default function Page() {
           <CardTitle>Dispute form</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input value={invoiceId} onChange={(e) => setInvoiceId(e.target.value)} placeholder="Invoice ID" />
-          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Reason" />
+          <Input
+            value={invoiceId}
+            onChange={(e) => setInvoiceId(e.target.value)}
+            placeholder="Invoice ID"
+          />
+          <Input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Reason"
+          />
           <Button
             disabled={dispute.isPending || !invoiceId.trim() || !reason.trim()}
-            onClick={() => dispute.mutate({ invoiceId: invoiceId.trim(), reason })}
+            onClick={() =>
+              dispute.mutate({ invoiceId: invoiceId.trim(), reason })
+            }
           >
             Submit dispute
           </Button>

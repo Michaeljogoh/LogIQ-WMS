@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
 import { accountUserRouter } from "@/server/api/routers/account-user";
+import { analyticsRouter } from "@/server/api/routers/analytics";
 import { alertsRouter } from "@/server/api/routers/alerts";
 import { cycleCountRouter } from "@/server/api/routers/cycle-count";
 import { integrationRouter } from "@/server/api/routers/integration";
@@ -37,6 +38,7 @@ export const appRouter = createTRPCRouter({
   stockLevel: stockLevelRouter,
   cycleCount: cycleCountRouter,
   alerts: alertsRouter,
+  analytics: analyticsRouter,
   supplier: supplierRouter,
   purchaseOrder: purchaseOrderRouter,
   workOrder: workOrderRouter,

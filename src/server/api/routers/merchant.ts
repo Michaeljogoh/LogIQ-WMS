@@ -110,10 +110,9 @@ export const merchantRouter = createTRPCRouter({
 
       const merchantIds = merchants.map((merchant) => merchant.id);
       const [orders, stock, invoices] = await ctx.db.$transaction([
-        ctx.db.order.groupBy({
-          by: ["merchantId"],
+        ctx.db.order.findMany({
           where: { accountId, merchantId: { in: merchantIds } },
-          _count: { _all: true },
+          select: { merchantId: true, dueAt: true, fulfillmentStatus: true },
         }),
         ctx.db.stockLevel.findMany({
           where: {
@@ -129,14 +128,36 @@ export const merchantRouter = createTRPCRouter({
           orderBy: { createdAt: "desc" },
         }),
       ]);
+      const orderCountByMerchant = new Map<string, number>();
+      for (const order of orders) {
+        orderCountByMerchant.set(
+          order.merchantId,
+          (orderCountByMerchant.get(order.merchantId) ?? 0) + 1,
+        );
+      }
 
       return merchants.map((merchant) => {
-        const orderCount = orders.find((o) => o.merchantId === merchant.id)?._count._all ?? 0;
+        const orderCount = orderCountByMerchant.get(merchant.id) ?? 0;
+        const merchantOrders = orders.filter((order) => order.merchantId === merchant.id);
+        const slaOrders = merchantOrders.filter((order) => order.dueAt !== null);
+        const slaMet = slaOrders.filter((order) => {
+          if (!order.dueAt) {
+            return false;
+          }
+          if (order.fulfillmentStatus === "FULFILLED") {
+            return true;
+          }
+          return order.dueAt > new Date();
+        }).length;
+        const slaScore = slaOrders.length
+          ? Math.round((slaMet / slaOrders.length) * 100)
+          : 100;
         const inventoryValueCents = stock
           .filter((row) => row.product.merchantId === merchant.id)
           .reduce((sum, row) => sum + row.quantity * 100, 0);
-        const latestInvoice = invoices.find((invoice) => invoice.merchantId === merchant.id);
-        const slaScore = 95;
+        const latestInvoice = invoices.find(
+          (invoice) => invoice.merchantId === merchant.id,
+        );
         return {
           ...merchant,
           orderCount,
@@ -175,7 +196,11 @@ export const merchantRouter = createTRPCRouter({
       const [orderCount, lowStockCount, recentShipments, latestInvoice] =
         await ctx.db.$transaction([
           ctx.db.order.count({
-            where: { accountId, merchantId, fulfillmentStatus: { not: "FULFILLED" } },
+            where: {
+              accountId,
+              merchantId,
+              fulfillmentStatus: { not: "FULFILLED" },
+            },
           }),
           ctx.db.product.count({
             where: {
@@ -300,8 +325,12 @@ export const merchantRouter = createTRPCRouter({
           },
         });
 
-        await tx.feeRule.deleteMany({ where: { accountId, contractId: contract.id } });
-        await tx.sLARule.deleteMany({ where: { accountId, contractId: contract.id } });
+        await tx.feeRule.deleteMany({
+          where: { accountId, contractId: contract.id },
+        });
+        await tx.sLARule.deleteMany({
+          where: { accountId, contractId: contract.id },
+        });
 
         if (input.feeRules.length) {
           await tx.feeRule.createMany({
