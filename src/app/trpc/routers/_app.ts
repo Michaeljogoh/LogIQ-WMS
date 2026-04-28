@@ -3,10 +3,15 @@ import { requireLinkedTenant } from "@/server/api/ctx-ids";
 import { accountUserRouter } from "@/server/api/routers/account-user";
 import { alertsRouter } from "@/server/api/routers/alerts";
 import { cycleCountRouter } from "@/server/api/routers/cycle-count";
+import { integrationRouter } from "@/server/api/routers/integration";
+import { invoiceRouter } from "@/server/api/routers/invoice";
 import { merchantRouter } from "@/server/api/routers/merchant";
 import { merchantUserRouter } from "@/server/api/routers/merchant-user";
+import { orderRouter } from "@/server/api/routers/order";
+import { pickListRouter } from "@/server/api/routers/pick-list";
 import { purchaseOrderRouter } from "@/server/api/routers/purchase-order";
 import { productRouter } from "@/server/api/routers/product";
+import { shipmentRouter } from "@/server/api/routers/shipment";
 import { stockLevelRouter } from "@/server/api/routers/stock-level";
 import { supplierRouter } from "@/server/api/routers/supplier";
 import { warehouseRouter } from "@/server/api/routers/warehouse";
@@ -35,6 +40,11 @@ export const appRouter = createTRPCRouter({
   supplier: supplierRouter,
   purchaseOrder: purchaseOrderRouter,
   workOrder: workOrderRouter,
+  order: orderRouter,
+  pickList: pickListRouter,
+  shipment: shipmentRouter,
+  integration: integrationRouter,
+  invoice: invoiceRouter,
   session: authedProc.query(async ({ ctx }) => {
     return ctx.session;
   }),

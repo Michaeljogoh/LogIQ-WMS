@@ -140,6 +140,17 @@ model LogiqAccount {
   receivingRecords ReceivingRecord[]
   workOrders WorkOrder[]
   purchaseOrderAsns PurchaseOrderAsn[]
+  orders        Order[]
+  pickLists     PickList[]
+  shipments     Shipment[]
+  trackingEvents TrackingEvent[]
+  carrierPerformanceLogs CarrierPerformanceLog[]
+  merchantContracts MerchantContract[]
+  feeRules      FeeRule[]
+  slaRules      SLARule[]
+  invoices      Invoice[]
+  invoiceLines  InvoiceLine[]
+  integrations  Integration[]
 
   @@map("logiq_account")
 }
@@ -220,6 +231,8 @@ model Warehouse {
   cycleCounts        CycleCount[]
   purchaseOrders     PurchaseOrder[]
   workOrders         WorkOrder[]
+  orders             Order[]
+  pickLists          PickList[]
   staffAssignments   WarehouseStaffAssignment[]
   managerAssignments WarehouseManager[]
 
@@ -260,6 +273,7 @@ model Bin {
   cycleCountLines CycleCountLine[]
   outputWorkOrders WorkOrder[] @relation("WorkOrderOutputBin")
   receivingRecords ReceivingRecord[] @relation("ReceivingRecordPutawayBin")
+  pickListItems   PickListItem[]
 
   @@index([warehouseId])
   @@map("bin")
@@ -281,6 +295,10 @@ model Merchant {
   products Product[]
   purchaseOrders PurchaseOrder[]
   workOrders WorkOrder[]
+  orders   Order[]
+  contract MerchantContract?
+  invoices Invoice[]
+  integrations Integration[]
 
   @@index([accountId])
   @@map("merchant")
@@ -335,6 +353,8 @@ model Product {
   receivingRecords ReceivingRecord[]
   workOrderInputs WorkOrderInput[]
   outputWorkOrders WorkOrder[] @relation("WorkOrderOutputProduct")
+  orderLines       OrderLine[]
+  pickListItems    PickListItem[]
 
   @@unique([accountId, merchantId, sku])
   @@index([accountId, merchantId])
@@ -545,6 +565,288 @@ model PurchaseOrderAsn {
   @@map("purchase_order_asn")
 }
 
+model Order {
+  id                String            @id @default(cuid())
+  accountId         String
+  merchantId        String
+  warehouseId       String?
+  channelOrderId    String
+  channel           String
+  status            OrderStatus       @default(PENDING)
+  fulfillmentStatus FulfillmentStatus @default(UNFULFILLED)
+  shippingName      String
+  shippingLine1     String
+  shippingCity      String
+  shippingState     String
+  shippingZip       String
+  shippingCountry   String            @default("US")
+  slaHours          Int?
+  dueAt             DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  account   LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  merchant  Merchant     @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse?   @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  lines     OrderLine[]
+  shipments Shipment[]
+  pickList  PickList?
+  pickListItems PickListItem[]
+
+  @@unique([accountId, channelOrderId, channel])
+  @@index([accountId, merchantId, status])
+  @@index([accountId, warehouseId])
+  @@map("order")
+}
+
+model OrderLine {
+  id        String   @id @default(cuid())
+  orderId   String
+  productId String
+  sku       String
+  quantity  Int
+  pickedQty Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  order   Order   @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([orderId])
+  @@index([productId])
+  @@map("order_line")
+}
+
+model PickList {
+  id          String       @id @default(cuid())
+  accountId   String
+  warehouseId String
+  strategy    PickStrategy
+  status      PickStatus   @default(PENDING)
+  assignedTo  String?
+  startedAt   DateTime?
+  completedAt DateTime?
+  orderId     String?      @unique
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  account   LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  warehouse Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  order     Order?       @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  items     PickListItem[]
+
+  @@index([accountId, warehouseId, status])
+  @@map("pick_list")
+}
+
+model PickListItem {
+  id          String   @id @default(cuid())
+  pickListId  String
+  productId   String
+  orderId     String
+  binId       String
+  binLabel    String
+  requiredQty Int
+  pickedQty   Int      @default(0)
+  scannedAt   DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  pickList PickList @relation(fields: [pickListId], references: [id], onDelete: Cascade)
+  product  Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  order    Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  bin      Bin      @relation(fields: [binId], references: [id], onDelete: Cascade)
+
+  @@index([pickListId])
+  @@index([productId])
+  @@map("pick_list_item")
+}
+
+model Shipment {
+  id                 String         @id @default(cuid())
+  accountId          String
+  orderId            String
+  easypostShipmentId String?        @unique
+  carrier            String
+  service            String
+  trackingNumber     String?
+  labelUrl           String?
+  weightOz           Float?
+  rateCents          Int?
+  status             ShipmentStatus @default(LABEL_CREATED)
+  shippedAt          DateTime?
+  deliveredAt        DateTime?
+  logiqRecommended   Boolean        @default(false)
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  account         LogiqAccount          @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  order           Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  trackingEvents  TrackingEvent[]
+  performanceLog  CarrierPerformanceLog?
+
+  @@index([accountId, orderId])
+  @@map("shipment")
+}
+
+model TrackingEvent {
+  id          String         @id @default(cuid())
+  accountId   String
+  shipmentId  String
+  status      ShipmentStatus
+  description String?
+  eventAt     DateTime
+  createdAt   DateTime       @default(now())
+
+  account  LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  shipment Shipment     @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, shipmentId])
+  @@map("tracking_event")
+}
+
+model CarrierPerformanceLog {
+  id              String   @id @default(cuid())
+  accountId       String
+  shipmentId      String   @unique
+  carrier         String
+  service         String
+  destinationZone Int?
+  weightOz        Float
+  promisedDays    Int?
+  actualDays      Int?
+  onTime          Boolean?
+  damaged         Boolean  @default(false)
+  rateCents       Int
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  account  LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  shipment Shipment     @relation(fields: [shipmentId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, carrier])
+  @@map("carrier_performance_log")
+}
+
+model MerchantContract {
+  id            String        @id @default(cuid())
+  accountId     String
+  merchantId    String        @unique
+  paymentPeriod PaymentPeriod @default(MONTHLY)
+  currency      String        @default("USD")
+  startDate     DateTime
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  account  LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  merchant Merchant     @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  feeRules FeeRule[]
+  slaRules SLARule[]
+  invoices Invoice[]
+
+  @@index([accountId, merchantId])
+  @@map("merchant_contract")
+}
+
+model FeeRule {
+  id            String   @id @default(cuid())
+  accountId     String
+  contractId    String
+  feeType       FeeType
+  rateCents     Int
+  unitLabel     String
+  includedUnits Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  account  LogiqAccount    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  contract MerchantContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, contractId])
+  @@map("fee_rule")
+}
+
+model SLARule {
+  id            String   @id @default(cuid())
+  accountId     String
+  contractId    String
+  metric        String
+  thresholdMins Int
+  warningPct    Int      @default(90)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  account  LogiqAccount    @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  contract MerchantContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, contractId])
+  @@map("sla_rule")
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  accountId     String
+  merchantId    String
+  contractId    String
+  invoiceNumber String
+  periodStart   DateTime
+  periodEnd     DateTime
+  status        InvoiceStatus @default(DRAFT)
+  totalCents    Int           @default(0)
+  anomalyFlags  Json?
+  pdfUrl        String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  account  LogiqAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  merchant Merchant         @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  contract MerchantContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  lines    InvoiceLine[]
+
+  @@index([accountId, merchantId])
+  @@map("invoice")
+}
+
+model InvoiceLine {
+  id            String   @id @default(cuid())
+  accountId     String
+  invoiceId     String
+  feeType       FeeType
+  description   String
+  unitCount     Int
+  unitRateCents Int
+  totalCents    Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  account LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  invoice Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, invoiceId])
+  @@map("invoice_line")
+}
+
+model Integration {
+  id         String            @id @default(cuid())
+  accountId  String
+  merchantId String?
+  type       IntegrationType
+  status     IntegrationStatus @default(CONNECTED)
+  credentials Json
+  metadata   Json?
+  lastSyncAt DateTime?
+  createdAt  DateTime          @default(now())
+  updatedAt  DateTime          @updatedAt
+
+  account  LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  merchant Merchant?    @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+
+  @@unique([accountId, merchantId, type])
+  @@map("integration")
+}
+
 model CycleCount {
   id            String      @id @default(cuid())
   accountId     String
@@ -660,4 +962,82 @@ enum AsnStatus {
   SENT
   RECEIVED
   CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  ON_HOLD
+  CANCELLED
+}
+
+enum FulfillmentStatus {
+  UNFULFILLED
+  PARTIALLY_FULFILLED
+  FULFILLED
+}
+
+enum PickStrategy {
+  SINGLE
+  BATCH
+  ZONE
+  WAVE
+}
+
+enum PickStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+}
+
+enum ShipmentStatus {
+  LABEL_CREATED
+  IN_TRANSIT
+  OUT_FOR_DELIVERY
+  DELIVERED
+  EXCEPTION
+  RETURNED
+  VOIDED
+}
+
+enum PaymentPeriod {
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+enum FeeType {
+  STORAGE_PER_UNIT_DAY
+  STORAGE_PER_PALLET_DAY
+  PICK_INITIAL
+  PICK_ADDITIONAL
+  RECEIVING_PER_PO
+  RECEIVING_PER_UNIT
+  PACKING_PER_SHIPMENT
+  LABEL_PER_SHIPMENT
+  RETURN_PROCESSING
+  SPECIAL_HANDLING
+}
+
+enum InvoiceStatus {
+  DRAFT
+  PENDING_REVIEW
+  SENT
+  PAID
+  OVERDUE
+  DISPUTED
+}
+
+enum IntegrationType {
+  SHOPIFY
+  WOOCOMMERCE
+  BIGCOMMERCE
+  ETSY
+  TIKTOK_SHOP
+  EBAY
+}
+
+enum IntegrationStatus {
+  CONNECTED
+  DISCONNECTED
+  ERROR
 }

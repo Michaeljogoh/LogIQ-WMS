@@ -1,4 +1,5 @@
 import { MerchantClaim } from "@/components/auth/merchant-claim";
+import { MerchantPortalDashboard } from "./portal-dashboard-client";
 
 export default async function Page({
   searchParams,
@@ -12,13 +13,6 @@ export default async function Page({
   }
 
   return (
-    <div className="space-y-2 p-6">
-      <h1 className="text-lg font-semibold tracking-tight">
-        Merchant dashboard
-      </h1>
-      <p className="text-sm text-muted-foreground">
-        Overview of inventory health, orders, and billing will appear here.
-      </p>
-    </div>
+    <MerchantPortalDashboard />
   );
 }
