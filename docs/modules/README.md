@@ -11,3 +11,4 @@ This folder contains implementation notes for each LogIQ module completed in thi
 - `module-6-merchantos.md`
 - `module-7-analytics-reporting.md`
 - `module-8-integrations-hub.md`
+- `module-9-notification-alert-center.md`
