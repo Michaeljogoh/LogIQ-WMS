@@ -1,10 +1,17 @@
 import { z } from "zod";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
 import { accountUserRouter } from "@/server/api/routers/account-user";
+import { alertsRouter } from "@/server/api/routers/alerts";
+import { cycleCountRouter } from "@/server/api/routers/cycle-count";
 import { merchantRouter } from "@/server/api/routers/merchant";
 import { merchantUserRouter } from "@/server/api/routers/merchant-user";
+import { purchaseOrderRouter } from "@/server/api/routers/purchase-order";
+import { productRouter } from "@/server/api/routers/product";
+import { stockLevelRouter } from "@/server/api/routers/stock-level";
+import { supplierRouter } from "@/server/api/routers/supplier";
 import { warehouseRouter } from "@/server/api/routers/warehouse";
 import { warehouseStaffRouter } from "@/server/api/routers/warehouse-staff";
+import { workOrderRouter } from "@/server/api/routers/work-order";
 import {
   authedProc,
   baseProcedure,
@@ -21,6 +28,13 @@ export const appRouter = createTRPCRouter({
   merchantUser: merchantUserRouter,
   warehouse: warehouseRouter,
   warehouseStaff: warehouseStaffRouter,
+  product: productRouter,
+  stockLevel: stockLevelRouter,
+  cycleCount: cycleCountRouter,
+  alerts: alertsRouter,
+  supplier: supplierRouter,
+  purchaseOrder: purchaseOrderRouter,
+  workOrder: workOrderRouter,
   session: authedProc.query(async ({ ctx }) => {
     return ctx.session;
   }),

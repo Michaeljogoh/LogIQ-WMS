@@ -10,18 +10,18 @@ datasource db {
 // --- better-auth core (table names via @@map) ---
 
 model User {
-  id            String    @id @default(cuid())
+  id            String   @id @default(cuid())
   name          String
   email         String
-  emailVerified Boolean   @default(false)
+  emailVerified Boolean  @default(false)
   image         String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
-  sessions          Session[]
-  accounts          Account[]
-  members           Member[]
-  invitationsSent   Invitation[] @relation("invitation_inviter")
+  sessions        Session[]
+  accounts        Account[]
+  members         Member[]
+  invitationsSent Invitation[] @relation("invitation_inviter")
 
   @@unique([email])
   @@map("user")
@@ -85,27 +85,27 @@ model Organization {
   createdAt DateTime @default(now())
   metadata  String?
 
-  members      Member[]
-  invitations  Invitation[]
+  members     Member[]
+  invitations Invitation[]
 
   @@map("organization")
 }
 
 model Member {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   userId         String
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   role           String
-  createdAt      DateTime @default(now())
+  createdAt      DateTime     @default(now())
 
   @@unique([organizationId, userId])
   @@map("member")
 }
 
 model Invitation {
-  id             String   @id @default(cuid())
+  id             String       @id @default(cuid())
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   email          String
@@ -114,7 +114,7 @@ model Invitation {
   expiresAt      DateTime
   inviterId      String
   inviter        User         @relation("invitation_inviter", fields: [inviterId], references: [id], onDelete: Cascade)
-  createdAt      DateTime @default(now())
+  createdAt      DateTime     @default(now())
 
   @@map("invitation")
 }
@@ -131,28 +131,33 @@ model LogiqAccount {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  warehouses   Warehouse[]
-  merchants    Merchant[]
-  users        AccountUser[]
+  warehouses    Warehouse[]
+  merchants     Merchant[]
+  users         AccountUser[]
   merchantUsers MerchantUser[]
+  suppliers     Supplier[]
+  purchaseOrders PurchaseOrder[]
+  receivingRecords ReceivingRecord[]
+  workOrders WorkOrder[]
+  purchaseOrderAsns PurchaseOrderAsn[]
 
   @@map("logiq_account")
 }
 
 model AccountUser {
-  id                 String   @id @default(cuid())
-  accountId          String
-  betterAuthUserId   String   @unique
-  systemRole         SystemRole
-  email              String
-  firstName          String?
-  lastName           String?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
+  id               String     @id @default(cuid())
+  accountId        String
+  betterAuthUserId String     @unique
+  systemRole       SystemRole
+  email            String
+  firstName        String?
+  lastName         String?
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
 
-  account               LogiqAccount             @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  warehouseAssignments  WarehouseStaffAssignment[]
-  managedWarehouses     WarehouseManager[]
+  account              LogiqAccount               @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  warehouseAssignments WarehouseStaffAssignment[]
+  managedWarehouses    WarehouseManager[]
 
   @@index([accountId])
   @@map("account_user")
@@ -207,10 +212,16 @@ model Warehouse {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  account               LogiqAccount              @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  zones                 Zone[]
-  staffAssignments      WarehouseStaffAssignment[]
-  managerAssignments    WarehouseManager[]
+  account            LogiqAccount               @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  zones              Zone[]
+  bins               Bin[]
+  stockLevels        StockLevel[]
+  stockMovements     StockMovement[]
+  cycleCounts        CycleCount[]
+  purchaseOrders     PurchaseOrder[]
+  workOrders         WorkOrder[]
+  staffAssignments   WarehouseStaffAssignment[]
+  managerAssignments WarehouseManager[]
 
   @@unique([accountId, code])
   @@index([accountId])
@@ -223,9 +234,35 @@ model Zone {
   name        String
   code        String
   warehouse   Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  bins        Bin[]
 
   @@index([warehouseId])
   @@map("zone")
+}
+
+model Bin {
+  id          String   @id @default(cuid())
+  zoneId      String
+  warehouseId String
+  label       String
+  aisle       String
+  rack        String
+  level       String
+  position    String
+  maxWeight   Float?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  zone            Zone             @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  warehouse       Warehouse        @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  stockLevels     StockLevel[]
+  cycleCountLines CycleCountLine[]
+  outputWorkOrders WorkOrder[] @relation("WorkOrderOutputBin")
+  receivingRecords ReceivingRecord[] @relation("ReceivingRecordPutawayBin")
+
+  @@index([warehouseId])
+  @@map("bin")
 }
 
 // --- Merchants (portal); minimal for Module 2 invites ---
@@ -239,32 +276,313 @@ model Merchant {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  account LogiqAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  users   MerchantUser[]
+  account  LogiqAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  users    MerchantUser[]
+  products Product[]
+  purchaseOrders PurchaseOrder[]
+  workOrders WorkOrder[]
 
   @@index([accountId])
   @@map("merchant")
 }
 
 model MerchantUser {
-  id               String              @id @default(cuid())
+  id               String               @id @default(cuid())
   accountId        String
   merchantId       String
-  betterAuthUserId String?             @unique
+  betterAuthUserId String?              @unique
   systemRole       SystemRole
   permissions      MerchantPermission[]
   email            String
   firstName        String?
   lastName         String?
   invitedBy        String
-  createdAt        DateTime            @default(now())
-  updatedAt        DateTime            @updatedAt
+  createdAt        DateTime             @default(now())
+  updatedAt        DateTime             @updatedAt
 
   account  LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   merchant Merchant     @relation(fields: [merchantId], references: [id], onDelete: Cascade)
 
   @@index([accountId, merchantId])
   @@map("merchant_user")
+}
+
+model Product {
+  id                String   @id @default(cuid())
+  accountId         String
+  merchantId        String
+  name              String
+  sku               String
+  barcode           String?
+  weightOz          Float?
+  lengthIn          Float?
+  widthIn           Float?
+  heightIn          Float?
+  lotTracking       Boolean  @default(false)
+  serialTracking    Boolean  @default(false)
+  expiryTracking    Boolean  @default(false)
+  lowStockThreshold Int?
+  deadStockDays     Int      @default(90)
+  isActive          Boolean  @default(true)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  merchant        Merchant         @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  stockLevels     StockLevel[]
+  movements       StockMovement[]
+  cycleCountLines CycleCountLine[]
+  purchaseOrderLines PurchaseOrderLine[]
+  receivingRecords ReceivingRecord[]
+  workOrderInputs WorkOrderInput[]
+  outputWorkOrders WorkOrder[] @relation("WorkOrderOutputProduct")
+
+  @@unique([accountId, merchantId, sku])
+  @@index([accountId, merchantId])
+  @@map("product")
+}
+
+model StockLevel {
+  id           String    @id @default(cuid())
+  accountId    String
+  productId    String
+  binId        String
+  warehouseId  String
+  quantity     Int       @default(0)
+  reservedQty  Int       @default(0)
+  lotNumber    String?
+  serialNumber String?
+  expiryDate   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bin       Bin       @relation(fields: [binId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([productId, binId, lotNumber, serialNumber])
+  @@index([accountId, warehouseId])
+  @@map("stock_level")
+}
+
+model StockMovement {
+  id             String       @id @default(cuid())
+  accountId      String
+  productId      String
+  warehouseId    String
+  binId          String?
+  type           MovementType
+  quantityDelta  Int
+  quantityBefore Int
+  quantityAfter  Int
+  referenceId    String?
+  referenceType  String?
+  lotNumber      String?
+  reason         String?
+  performedBy    String
+  createdAt      DateTime     @default(now())
+
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse Warehouse @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, productId])
+  @@index([accountId, warehouseId])
+  @@map("stock_movement")
+}
+
+model Supplier {
+  id           String   @id @default(cuid())
+  accountId    String
+  name         String
+  email        String?
+  leadTimeDays Int      @default(7)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  account        LogiqAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  purchaseOrders PurchaseOrder[]
+
+  @@index([accountId])
+  @@map("supplier")
+}
+
+model PurchaseOrder {
+  id               String            @id @default(cuid())
+  accountId        String
+  merchantId       String
+  warehouseId      String
+  supplierId       String
+  poNumber         String
+  status           POStatus          @default(DRAFT)
+  expectedDate     DateTime?
+  receivedAt       DateTime?
+  notes            String?
+  createdBy        String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  account          LogiqAccount       @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  merchant         Merchant           @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  warehouse        Warehouse          @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  supplier         Supplier           @relation(fields: [supplierId], references: [id], onDelete: Cascade)
+  lines            PurchaseOrderLine[]
+  receivingRecords ReceivingRecord[]
+  asns             PurchaseOrderAsn[]
+
+  @@unique([accountId, poNumber])
+  @@index([accountId, merchantId])
+  @@index([accountId, warehouseId])
+  @@map("purchase_order")
+}
+
+model PurchaseOrderLine {
+  id            String        @id @default(cuid())
+  poId          String
+  productId     String
+  orderedQty    Int
+  receivedQty   Int           @default(0)
+  unitCostCents Int?
+  lotNumber     String?
+  expiryDate    DateTime?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  po      PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([poId])
+  @@index([productId])
+  @@map("purchase_order_line")
+}
+
+model ReceivingRecord {
+  id              String        @id @default(cuid())
+  accountId       String
+  poId            String
+  productId       String
+  receivedQty     Int
+  putawayBinId    String?
+  receivedBy      String
+  discrepancyNote String?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  account LogiqAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  po      PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+  product Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  putawayBin Bin?       @relation("ReceivingRecordPutawayBin", fields: [putawayBinId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, poId])
+  @@index([accountId, productId])
+  @@map("receiving_record")
+}
+
+model WorkOrder {
+  id              String          @id @default(cuid())
+  accountId       String
+  merchantId      String
+  warehouseId     String
+  woNumber        String
+  type            WorkOrderType
+  status          WorkOrderStatus @default(PENDING)
+  targetQty       Int
+  completedQty    Int             @default(0)
+  outputProductId String?
+  outputBinId     String?
+  scheduledDate   DateTime?
+  completedAt     DateTime?
+  createdBy       String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  account       LogiqAccount   @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  merchant      Merchant       @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  warehouse     Warehouse      @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  outputProduct Product?       @relation("WorkOrderOutputProduct", fields: [outputProductId], references: [id], onDelete: SetNull)
+  outputBin     Bin?           @relation("WorkOrderOutputBin", fields: [outputBinId], references: [id], onDelete: SetNull)
+  inputLines    WorkOrderInput[]
+
+  @@unique([accountId, woNumber])
+  @@index([accountId, merchantId])
+  @@index([accountId, warehouseId])
+  @@map("work_order")
+}
+
+model WorkOrderInput {
+  id          String    @id @default(cuid())
+  workOrderId String
+  productId   String
+  qtyPerUnit  Int
+  consumedQty Int       @default(0)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  workOrder WorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  product   Product   @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([workOrderId])
+  @@index([productId])
+  @@map("work_order_input")
+}
+
+model PurchaseOrderAsn {
+  id                  String    @id @default(cuid())
+  accountId           String
+  poId                String
+  asnNumber           String
+  expectedArrivalDate DateTime?
+  status              AsnStatus @default(DRAFT)
+  notes               String?
+  createdBy           String
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  account       LogiqAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  purchaseOrder PurchaseOrder @relation(fields: [poId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, asnNumber])
+  @@index([accountId, poId])
+  @@map("purchase_order_asn")
+}
+
+model CycleCount {
+  id            String      @id @default(cuid())
+  accountId     String
+  warehouseId   String
+  name          String
+  status        CycleStatus @default(DRAFT)
+  scheduledDate DateTime?
+  completedAt   DateTime?
+  createdBy     String
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  warehouse Warehouse        @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  lines     CycleCountLine[]
+
+  @@index([accountId, warehouseId])
+  @@map("cycle_count")
+}
+
+model CycleCountLine {
+  id           String   @id @default(cuid())
+  cycleCountId String
+  productId    String
+  binId        String
+  expectedQty  Int
+  countedQty   Int?
+  discrepancy  Int?
+  reconciled   Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  cycleCount CycleCount @relation(fields: [cycleCountId], references: [id], onDelete: Cascade)
+  product    Product    @relation(fields: [productId], references: [id], onDelete: Cascade)
+  bin        Bin        @relation(fields: [binId], references: [id], onDelete: Cascade)
+
+  @@index([cycleCountId])
+  @@index([productId, binId])
+  @@map("cycle_count_line")
 }
 
 enum Plan {
@@ -292,4 +610,54 @@ enum MerchantPermission {
   READ
   WRITE
   BILLING
+}
+
+enum MovementType {
+  INBOUND
+  OUTBOUND
+  TRANSFER
+  ADJUSTMENT
+  CYCLE_COUNT_ADJUSTMENT
+  RETURN_RESTOCK
+  RETURN_DISPOSE
+  WORK_ORDER_CONSUME
+  WORK_ORDER_PRODUCE
+}
+
+enum CycleStatus {
+  DRAFT
+  ACTIVE
+  COMPLETED
+  RECONCILED
+}
+
+enum POStatus {
+  DRAFT
+  SENT
+  CONFIRMED
+  IN_TRANSIT
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
+}
+
+enum WorkOrderType {
+  KITTING
+  ASSEMBLY
+  BUNDLING
+  REPACKAGING
+}
+
+enum WorkOrderStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum AsnStatus {
+  DRAFT
+  SENT
+  RECEIVED
+  CANCELLED
 }
