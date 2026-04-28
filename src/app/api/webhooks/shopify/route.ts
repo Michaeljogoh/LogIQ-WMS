@@ -1,5 +1,5 @@
-import { NextResponse } from "next/server";
+import { handleIntegrationWebhook } from "@/app/api/webhooks/_integration";
 
-export function POST() {
-  return NextResponse.json({ error: "Not implemented" }, { status: 501 });
+export async function POST(request: Request) {
+  return handleIntegrationWebhook({ request, type: "SHOPIFY" });
 }

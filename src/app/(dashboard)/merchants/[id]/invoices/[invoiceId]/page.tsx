@@ -21,7 +21,26 @@ export default function Page() {
   const invoiceId = params.invoiceId;
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const invoiceQuery = useQuery(trpc.invoice.getById.queryOptions({ invoiceId }));
+  const invoiceQuery = useQuery(
+    trpc.invoice.getById.queryOptions({ invoiceId }),
+  );
+  const invoice = invoiceQuery.data as
+    | {
+        invoiceNumber?: string;
+        status?: string;
+        totalCents?: number;
+        anomalyFlags?: unknown;
+        pdfUrl?: string | null;
+        lines?: Array<{
+          id: string;
+          feeType: string;
+          description: string;
+          unitCount: number;
+          unitRateCents: number;
+          totalCents: number;
+        }>;
+      }
+    | undefined;
   const [reason, setReason] = useState("");
   const disputeMutation = useMutation(
     trpc.invoice.dispute.mutationOptions({
@@ -37,16 +56,29 @@ export default function Page() {
     <div className="space-y-6 p-6">
       <Card>
         <CardHeader>
-          <CardTitle>{invoiceQuery.data?.invoiceNumber ?? "Invoice detail"}</CardTitle>
+          <CardTitle>{invoice?.invoiceNumber ?? "Invoice detail"}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <p>Status: {invoiceQuery.data?.status}</p>
-          <p>Total: ${((invoiceQuery.data?.totalCents ?? 0) / 100).toFixed(2)}</p>
-          <p>Anomaly flags: {JSON.stringify(invoiceQuery.data?.anomalyFlags ?? {})}</p>
+          <p>Status: {invoice?.status}</p>
+          <p>Total: ${((invoice?.totalCents ?? 0) / 100).toFixed(2)}</p>
+          <p>Anomaly flags: {String(invoice?.anomalyFlags ?? "{}")}</p>
+          <div className="space-y-1 text-sm">
+            <p className="font-medium">Dispute audit trail</p>
+            {invoiceQuery.data?.disputes?.length ? (
+              invoiceQuery.data.disputes.map((dispute) => (
+                <p key={dispute.id}>
+                  {new Date(dispute.createdAt).toLocaleString()} - {dispute.status} -{" "}
+                  {dispute.reason}
+                </p>
+              ))
+            ) : (
+              <p>No disputes logged.</p>
+            )}
+          </div>
           <p>
             PDF:{" "}
-            {invoiceQuery.data?.pdfUrl ? (
-              <a href={invoiceQuery.data.pdfUrl} className="text-primary hover:underline">
+            {invoice?.pdfUrl ? (
+              <a href={invoice.pdfUrl} className="text-primary hover:underline">
                 Download
               </a>
             ) : (
@@ -71,12 +103,14 @@ export default function Page() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {invoiceQuery.data?.lines.map((line) => (
+              {invoice?.lines?.map((line) => (
                 <TableRow key={line.id}>
                   <TableCell>{line.feeType}</TableCell>
                   <TableCell>{line.description}</TableCell>
                   <TableCell>{line.unitCount}</TableCell>
-                  <TableCell>${(line.unitRateCents / 100).toFixed(2)}</TableCell>
+                  <TableCell>
+                    ${(line.unitRateCents / 100).toFixed(2)}
+                  </TableCell>
                   <TableCell>${(line.totalCents / 100).toFixed(2)}</TableCell>
                 </TableRow>
               ))}
@@ -89,7 +123,11 @@ export default function Page() {
           <CardTitle>Dispute invoice</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <Input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="Dispute reason" />
+          <Input
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            placeholder="Dispute reason"
+          />
           <Button
             disabled={disputeMutation.isPending || !reason.trim()}
             onClick={() => disputeMutation.mutate({ invoiceId, reason })}

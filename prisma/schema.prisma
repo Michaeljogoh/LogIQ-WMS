@@ -150,7 +150,11 @@ model LogiqAccount {
   slaRules      SLARule[]
   invoices      Invoice[]
   invoiceLines  InvoiceLine[]
+  invoiceDisputes InvoiceDispute[]
   integrations  Integration[]
+  apiKeys       ApiKey[]
+  webhookEndpoints WebhookEndpoint[]
+  integrationSyncLogs IntegrationSyncLog[]
 
   @@map("logiq_account")
 }
@@ -804,6 +808,7 @@ model Invoice {
   merchant Merchant         @relation(fields: [merchantId], references: [id], onDelete: Cascade)
   contract MerchantContract @relation(fields: [contractId], references: [id], onDelete: Cascade)
   lines    InvoiceLine[]
+  disputes InvoiceDispute[]
 
   @@index([accountId, merchantId])
   @@map("invoice")
@@ -828,6 +833,26 @@ model InvoiceLine {
   @@map("invoice_line")
 }
 
+model InvoiceDispute {
+  id             String   @id @default(cuid())
+  accountId      String
+  invoiceId      String
+  submittedBy    String
+  reason         String
+  status         String   @default("OPEN")
+  resolutionNote String?
+  resolvedBy     String?
+  resolvedAt     DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  account LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  invoice Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, invoiceId])
+  @@map("invoice_dispute")
+}
+
 model Integration {
   id         String            @id @default(cuid())
   accountId  String
@@ -842,9 +867,63 @@ model Integration {
 
   account  LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   merchant Merchant?    @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+  syncLogs IntegrationSyncLog[]
 
   @@unique([accountId, merchantId, type])
   @@map("integration")
+}
+
+model ApiKey {
+  id         String    @id @default(cuid())
+  accountId  String
+  name       String
+  keyHash    String    @unique
+  keyPrefix  String
+  scopes     String[]
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  account LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, isActive])
+  @@map("api_key")
+}
+
+model WebhookEndpoint {
+  id         String    @id @default(cuid())
+  accountId  String
+  url        String
+  secret     String
+  isActive   Boolean   @default(true)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  account LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, url])
+  @@index([accountId, isActive])
+  @@map("webhook_endpoint")
+}
+
+model IntegrationSyncLog {
+  id            String   @id @default(cuid())
+  accountId     String
+  integrationId String
+  eventType     String
+  status        String
+  ordersFetched Int      @default(0)
+  ordersUpserted Int     @default(0)
+  errorMessage  String?
+  createdAt     DateTime @default(now())
+
+  account     LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  integration Integration  @relation(fields: [integrationId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, integrationId, createdAt])
+  @@map("integration_sync_log")
 }
 
 model CycleCount {
@@ -1034,6 +1113,8 @@ enum IntegrationType {
   ETSY
   TIKTOK_SHOP
   EBAY
+  EASYPOST
+  QUICKBOOKS
 }
 
 enum IntegrationStatus {

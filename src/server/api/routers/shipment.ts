@@ -4,6 +4,8 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProc, requireRole } from "@/app/trpc/init";
 import { getObjectPresignedUrl, putObject } from "@/lib/s3";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
+import { enqueueIntegrationSyncJob } from "@/server/jobs/integration-sync";
+import { dispatchOutboundWebhook } from "@/server/integrations/svix-events";
 import {
   buyShipmentLabel,
   createRateShopShipment,
@@ -208,6 +210,49 @@ export const shipmentRouter = createTRPCRouter({
         await tx.order.update({
           where: { id: input.orderId },
           data: { fulfillmentStatus: "FULFILLED" },
+        });
+        const orderContext = await tx.order.findUnique({
+          where: { id: input.orderId },
+          select: { merchantId: true, channelOrderId: true },
+        });
+        const merchantIntegrations = await tx.integration.findMany({
+          where: {
+            accountId,
+            merchantId: orderContext?.merchantId,
+            status: "CONNECTED",
+            type: {
+              in: [
+                "SHOPIFY",
+                "WOOCOMMERCE",
+                "BIGCOMMERCE",
+                "ETSY",
+                "TIKTOK_SHOP",
+                "EBAY",
+              ],
+            },
+          },
+          select: { id: true },
+        });
+        await Promise.allSettled(
+          merchantIntegrations.map((integration) =>
+            enqueueIntegrationSyncJob({
+              integrationId: integration.id,
+              trigger: "tracking_pushback",
+              channelOrderId: orderContext?.channelOrderId,
+              trackingNumber: shipment.trackingNumber ?? undefined,
+              carrier: shipment.carrier,
+              service: shipment.service,
+            }),
+          ),
+        );
+        await dispatchOutboundWebhook({
+          accountId,
+          eventType: "logiqwms.shipment.label_created",
+          payload: {
+            shipmentId: shipment.id,
+            orderId: shipment.orderId,
+            trackingNumber: shipment.trackingNumber,
+          },
         });
         return { ...shipment, labelDownloadUrl };
       });
