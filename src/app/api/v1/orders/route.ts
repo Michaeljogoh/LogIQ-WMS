@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { shouldMeterOrderOverage } from "@/server/billing/plan-limits";
+import { scheduleOverageOrderMeter } from "@/server/billing/usage-ingest";
 import {
   authenticateApiRequest,
   withApiErrorHandling,
@@ -67,36 +69,45 @@ export async function POST(request: Request) {
       );
     }
 
-    const created = await db.order.create({
-      data: {
-        accountId: auth.accountId,
-        merchantId: body.merchantId,
-        channelOrderId: body.channelOrderId,
-        channel: body.channel,
-        shippingName: body.shippingName,
-        shippingLine1: body.shippingLine1,
-        shippingCity: body.shippingCity,
-        shippingState: body.shippingState,
-        shippingZip: body.shippingZip,
-        shippingCountry: body.shippingCountry,
-        lines: {
-          create: body.lines
-            .map((line) => {
-              const productId = productBySku.get(line.sku);
-              if (!productId) {
-                return null;
-              }
-              return {
-                productId,
-                sku: line.sku,
-                quantity: line.quantity,
-              };
-            })
-            .filter((line): line is NonNullable<typeof line> => Boolean(line)),
+    const created = await db.$transaction(async (tx) => {
+      const markOverage = await shouldMeterOrderOverage(tx, auth.accountId);
+      const order = await tx.order.create({
+        data: {
+          accountId: auth.accountId,
+          merchantId: body.merchantId,
+          channelOrderId: body.channelOrderId,
+          channel: body.channel,
+          shippingName: body.shippingName,
+          shippingLine1: body.shippingLine1,
+          shippingCity: body.shippingCity,
+          shippingState: body.shippingState,
+          shippingZip: body.shippingZip,
+          shippingCountry: body.shippingCountry,
+          lines: {
+            create: body.lines
+              .map((line) => {
+                const productId = productBySku.get(line.sku);
+                if (!productId) {
+                  return null;
+                }
+                return {
+                  productId,
+                  sku: line.sku,
+                  quantity: line.quantity,
+                };
+              })
+              .filter((line): line is NonNullable<typeof line> =>
+                Boolean(line),
+              ),
+          },
         },
-      },
-      include: { lines: true },
+        include: { lines: true },
+      });
+      return { order, markOverage };
     });
-    return NextResponse.json(created, { status: 201 });
+    if (created.markOverage) {
+      scheduleOverageOrderMeter(auth.accountId, created.order.id);
+    }
+    return NextResponse.json(created.order, { status: 201 });
   });
 }

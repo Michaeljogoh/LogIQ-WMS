@@ -2,6 +2,8 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProc, requireRole } from "@/app/trpc/init";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
+import { shouldMeterOrderOverage } from "@/server/billing/plan-limits";
+import { scheduleOverageOrderMeter } from "@/server/billing/usage-ingest";
 
 const createOrderInput = z.object({
   merchantId: z.string().cuid(),
@@ -137,33 +139,41 @@ export const orderRouter = createTRPCRouter({
       }
       const skuByProductId = new Map(products.map((p) => [p.id, p.sku]));
       try {
-        return await ctx.db.order.create({
-          data: {
-            accountId,
-            merchantId: input.merchantId,
-            channelOrderId: input.channelOrderId,
-            channel: input.channel,
-            shippingName: input.shippingName,
-            shippingLine1: input.shippingLine1,
-            shippingCity: input.shippingCity,
-            shippingState: input.shippingState,
-            shippingZip: input.shippingZip,
-            shippingCountry: input.shippingCountry,
-            slaHours: input.slaHours,
-            dueAt:
-              typeof input.slaHours === "number"
-                ? new Date(Date.now() + input.slaHours * 60 * 60 * 1000)
-                : null,
-            lines: {
-              create: input.lines.map((line) => ({
-                productId: line.productId,
-                sku: skuByProductId.get(line.productId) ?? "UNKNOWN",
-                quantity: line.quantity,
-              })),
+        const created = await ctx.db.$transaction(async (tx) => {
+          const markOverage = await shouldMeterOrderOverage(tx, accountId);
+          const order = await tx.order.create({
+            data: {
+              accountId,
+              merchantId: input.merchantId,
+              channelOrderId: input.channelOrderId,
+              channel: input.channel,
+              shippingName: input.shippingName,
+              shippingLine1: input.shippingLine1,
+              shippingCity: input.shippingCity,
+              shippingState: input.shippingState,
+              shippingZip: input.shippingZip,
+              shippingCountry: input.shippingCountry,
+              slaHours: input.slaHours,
+              dueAt:
+                typeof input.slaHours === "number"
+                  ? new Date(Date.now() + input.slaHours * 60 * 60 * 1000)
+                  : null,
+              lines: {
+                create: input.lines.map((line) => ({
+                  productId: line.productId,
+                  sku: skuByProductId.get(line.productId) ?? "UNKNOWN",
+                  quantity: line.quantity,
+                })),
+              },
             },
-          },
-          include: { lines: true },
+            include: { lines: true },
+          });
+          return { order, markOverage };
         });
+        if (created.markOverage) {
+          scheduleOverageOrderMeter(accountId, created.order.id);
+        }
+        return created.order;
       } catch (error: unknown) {
         if (error && typeof error === "object" && "code" in error) {
           const prismaError = error as { code?: string };

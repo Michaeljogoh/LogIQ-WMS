@@ -31,3 +31,5 @@ Whenever a module from `AGENTS.md` is implemented or materially changed in code,
 - `module-10-barcode-label-generation.md`
 - `module-11-packaging-library.md`
 - `module-12-batch-label-printing.md`
+- `module-13-multi-warehouse-routing.md`
+- `module-14-platform-billing-polar.md`
