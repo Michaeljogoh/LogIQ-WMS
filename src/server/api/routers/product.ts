@@ -2,6 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProc, requireRole } from "@/app/trpc/init";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
+import { tryGenerateDefaultProductLabel } from "@/server/label/persist";
 
 const productCreateInput = z.object({
   merchantId: z.string().cuid(),
@@ -59,7 +60,7 @@ export const productRouter = createTRPCRouter({
       }
 
       try {
-        return await ctx.db.product.create({
+        const created = await ctx.db.product.create({
           data: {
             accountId,
             merchantId: input.merchantId,
@@ -76,6 +77,8 @@ export const productRouter = createTRPCRouter({
             lowStockThreshold: input.lowStockThreshold ?? null,
           },
         });
+        void tryGenerateDefaultProductLabel(ctx.db, accountId, created.id);
+        return created;
       } catch (error: unknown) {
         if (error && typeof error === "object" && "code" in error) {
           const prismaError = error as { code?: string };

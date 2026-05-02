@@ -1,11 +1,13 @@
 import { z } from "zod";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
 import { accountUserRouter } from "@/server/api/routers/account-user";
-import { analyticsRouter } from "@/server/api/routers/analytics";
 import { alertsRouter } from "@/server/api/routers/alerts";
+import { analyticsRouter } from "@/server/api/routers/analytics";
 import { cycleCountRouter } from "@/server/api/routers/cycle-count";
 import { integrationRouter } from "@/server/api/routers/integration";
 import { invoiceRouter } from "@/server/api/routers/invoice";
+import { labelRouter } from "@/server/api/routers/label";
+import { labelTemplateRouter } from "@/server/api/routers/label-template";
 import { merchantRouter } from "@/server/api/routers/merchant";
 import { merchantUserRouter } from "@/server/api/routers/merchant-user";
 import {
@@ -13,9 +15,10 @@ import {
   notificationsRouter,
 } from "@/server/api/routers/notification";
 import { orderRouter } from "@/server/api/routers/order";
+import { packagingRouter } from "@/server/api/routers/packaging";
 import { pickListRouter } from "@/server/api/routers/pick-list";
-import { purchaseOrderRouter } from "@/server/api/routers/purchase-order";
 import { productRouter } from "@/server/api/routers/product";
+import { purchaseOrderRouter } from "@/server/api/routers/purchase-order";
 import { shipmentRouter } from "@/server/api/routers/shipment";
 import { stockLevelRouter } from "@/server/api/routers/stock-level";
 import { supplierRouter } from "@/server/api/routers/supplier";
@@ -51,9 +54,12 @@ export const appRouter = createTRPCRouter({
   workOrder: workOrderRouter,
   order: orderRouter,
   pickList: pickListRouter,
+  packaging: packagingRouter,
   shipment: shipmentRouter,
   integration: integrationRouter,
   invoice: invoiceRouter,
+  labelTemplate: labelTemplateRouter,
+  label: labelRouter,
   session: authedProc.query(async ({ ctx }) => {
     return ctx.session;
   }),

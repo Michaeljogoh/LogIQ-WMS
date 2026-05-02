@@ -1,26 +1,19 @@
-import { differenceInCalendarDays } from "date-fns";
 import { TRPCError } from "@trpc/server";
+import { differenceInCalendarDays } from "date-fns";
 import { z } from "zod";
 import { createTRPCRouter, protectedProc, requireRole } from "@/app/trpc/init";
 import { getObjectPresignedUrl, putObject } from "@/lib/s3";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
-import { enqueueIntegrationSyncJob } from "@/server/jobs/integration-sync";
-import { dispatchOutboundWebhook } from "@/server/integrations/svix-events";
 import {
   buyShipmentLabel,
   createRateShopShipment,
 } from "@/server/integrations/easypost";
-
-type RateOption = {
-  id: string;
-  carrier: string;
-  service: string;
-  rateCents: number;
-  estimatedDays: number;
-  isCheapest: boolean;
-  isFastest: boolean;
-  logiqRecommended: boolean;
-};
+import { dispatchOutboundWebhook } from "@/server/integrations/svix-events";
+import { enqueueIntegrationSyncJob } from "@/server/jobs/integration-sync";
+import {
+  dimWeightOzFromBox,
+  divisorForCarrierLabel,
+} from "@/server/packaging/dim-weight";
 
 export const shipmentRouter = createTRPCRouter({
   getById: protectedProc
@@ -74,6 +67,9 @@ export const shipmentRouter = createTRPCRouter({
       z.object({
         orderId: z.string().cuid(),
         weightOz: z.number().positive(),
+        parcelLengthIn: z.number().positive().optional(),
+        parcelWidthIn: z.number().positive().optional(),
+        parcelHeightIn: z.number().positive().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -121,6 +117,9 @@ export const shipmentRouter = createTRPCRouter({
           country: order.shippingCountry,
         },
         weightOz: input.weightOz,
+        lengthIn: input.parcelLengthIn,
+        widthIn: input.parcelWidthIn,
+        heightIn: input.parcelHeightIn,
       });
 
       return quote.rates.map((rate) => ({
@@ -143,6 +142,7 @@ export const shipmentRouter = createTRPCRouter({
         orderId: z.string().cuid(),
         weightOz: z.number().positive(),
         rateId: z.string().min(1),
+        packagingTypeId: z.string().cuid().optional(),
       }),
     )
     .mutation(async ({ ctx, input }) => {
@@ -170,6 +170,26 @@ export const shipmentRouter = createTRPCRouter({
           easypostShipmentId,
           rateId: selectedRateId,
         });
+        let packagingTypeId: string | null = input.packagingTypeId ?? null;
+        let packagingCostCents: number | null = null;
+        let dimWeightOz: number | null = null;
+        if (packagingTypeId) {
+          const pt = await tx.packagingType.findFirst({
+            where: { id: packagingTypeId, accountId },
+          });
+          if (pt) {
+            packagingCostCents = pt.costCents;
+            const divisor = divisorForCarrierLabel(purchased.carrier);
+            dimWeightOz = dimWeightOzFromBox({
+              lengthIn: pt.lengthIn,
+              widthIn: pt.widthIn,
+              heightIn: pt.heightIn,
+              divisor,
+            });
+          } else {
+            packagingTypeId = null;
+          }
+        }
         if (!purchased.labelUrl) {
           throw new TRPCError({
             code: "PRECONDITION_FAILED",
@@ -201,10 +221,14 @@ export const shipmentRouter = createTRPCRouter({
             carrier: purchased.carrier,
             service: purchased.service,
             weightOz: input.weightOz,
+            rateCents: purchased.rateCents,
             labelUrl: `s3://${process.env.AWS_S3_BUCKET ?? "bucket"}/${key}`,
             trackingNumber: purchased.trackingNumber,
             logiqRecommended: false,
             status: "LABEL_CREATED",
+            packagingTypeId,
+            packagingCostCents,
+            dimWeightOz,
           },
         });
         await tx.order.update({

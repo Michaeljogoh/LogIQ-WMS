@@ -1,13 +1,28 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { PrinterIcon } from "lucide-react";
+import { toast } from "sonner";
 import { useTRPC } from "@/app/trpc/client";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Page() {
   const trpc = useTRPC();
   const locationsQuery = useQuery(trpc.stockLevel.locations.queryOptions({}));
+
+  const printBinMutation = useMutation(
+    trpc.label.generateBin.mutationOptions({
+      onSuccess: (data) => {
+        toast.success("Bin label generated");
+        window.open(data.viewUrl, "_blank", "noopener,noreferrer");
+      },
+      onError: (err) => {
+        toast.error(err.message ?? "Could not generate bin label");
+      },
+    }),
+  );
 
   return (
     <div className="space-y-6 p-6">
@@ -30,13 +45,21 @@ export default function Page() {
             <CardContent>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {zone.bins.map((bin) => (
-                  <div
-                    key={bin.label}
-                    className="rounded-lg border p-3 text-sm"
-                  >
+                  <div key={bin.id} className="rounded-lg border p-3 text-sm">
                     <p className="font-medium">{bin.label}</p>
                     <p className="text-muted-foreground">{bin.skuCount} SKUs</p>
                     <p className="text-muted-foreground">{bin.units} units</p>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-3 min-h-11 w-full gap-2"
+                      disabled={printBinMutation.isPending}
+                      onClick={() => printBinMutation.mutate({ binId: bin.id })}
+                    >
+                      <PrinterIcon className="size-4" aria-hidden />
+                      Print bin label
+                    </Button>
                   </div>
                 ))}
               </div>

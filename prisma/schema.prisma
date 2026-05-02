@@ -159,6 +159,11 @@ model LogiqAccount {
   notificationPreferences NotificationPreference[]
   escalationRules EscalationRule[]
   pushSubscriptions PushSubscription[]
+  labelTemplates  LabelTemplate[]
+  generatedLabels GeneratedLabel[]
+  packagingTypes PackagingType[]
+  printQueues     PrintQueue[]
+  thermalPrinters ThermalPrinter[]
 
   @@map("logiq_account")
 }
@@ -241,6 +246,8 @@ model Warehouse {
   workOrders         WorkOrder[]
   orders             Order[]
   pickLists          PickList[]
+  printQueues        PrintQueue[]
+  thermalPrinters    ThermalPrinter[]
   staffAssignments   WarehouseStaffAssignment[]
   managerAssignments WarehouseManager[]
 
@@ -600,6 +607,7 @@ model Order {
   shipments Shipment[]
   pickList  PickList?
   pickListItems PickListItem[]
+  printQueueItems PrintQueueItem[]
 
   @@unique([accountId, channelOrderId, channel])
   @@index([accountId, merchantId, status])
@@ -685,16 +693,44 @@ model Shipment {
   shippedAt          DateTime?
   deliveredAt        DateTime?
   logiqRecommended   Boolean        @default(false)
+  packagingTypeId    String?
+  packagingCostCents Int?
+  dimWeightOz        Float?
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
-  account         LogiqAccount          @relation(fields: [accountId], references: [id], onDelete: Cascade)
-  order           Order                 @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  trackingEvents  TrackingEvent[]
-  performanceLog  CarrierPerformanceLog?
+  account        LogiqAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  order          Order            @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  packagingType  PackagingType?   @relation(fields: [packagingTypeId], references: [id], onDelete: SetNull)
+  trackingEvents TrackingEvent[]
+  performanceLog CarrierPerformanceLog?
+  printQueueItem PrintQueueItem?
 
   @@index([accountId, orderId])
+  @@index([accountId, packagingTypeId])
   @@map("shipment")
+}
+
+model PackagingType {
+  id           String   @id @default(cuid())
+  accountId    String
+  name         String
+  lengthIn     Float
+  widthIn      Float
+  heightIn     Float
+  maxWeightOz  Float
+  tareWeightOz Float    @default(0)
+  costCents    Int      @default(0)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  account    LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  shipments  Shipment[]
+  printQueueItems PrintQueueItem[]
+
+  @@index([accountId])
+  @@map("packaging_type")
 }
 
 model TrackingEvent {
@@ -1044,6 +1080,135 @@ model CycleCountLine {
   @@index([cycleCountId])
   @@index([productId, binId])
   @@map("cycle_count_line")
+}
+
+model LabelTemplate {
+  id         String    @id @default(cuid())
+  accountId  String
+  name       String
+  type       LabelType
+  widthMm    Float     @default(101.6)
+  heightMm   Float     @default(152.4)
+  fields     Json
+  logoUrl    String?
+  isDefault  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  account   LogiqAccount     @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  generated GeneratedLabel[]
+
+  @@index([accountId, type])
+  @@map("label_template")
+}
+
+model GeneratedLabel {
+  id            String   @id @default(cuid())
+  accountId     String
+  templateId    String
+  referenceId   String
+  referenceType String
+  pdfUrl        String
+  zplContent    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  account  LogiqAccount  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  template LabelTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+
+  @@index([accountId, referenceId])
+  @@index([accountId, templateId])
+  @@map("generated_label")
+}
+
+model PrintQueue {
+  id              String           @id @default(cuid())
+  accountId       String
+  warehouseId     String
+  name            String
+  status          PrintQueueStatus @default(PENDING)
+  labelCount      Int              @default(0)
+  printedAt       DateTime?
+  manifestFormUrl String?
+  createdBy       String
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  account   LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  warehouse Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+  items     PrintQueueItem[]
+
+  @@index([accountId, warehouseId])
+  @@map("print_queue")
+}
+
+model PrintQueueItem {
+  id              String          @id @default(cuid())
+  queueId         String
+  orderId         String
+  easypostRateId  String
+  weightOz        Float
+  packagingTypeId String?
+  shipmentId      String?         @unique
+  status          PrintItemStatus @default(PENDING)
+  errorMessage    String?
+  labelUrl        String?
+  zplContent      String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  queue           PrintQueue      @relation(fields: [queueId], references: [id], onDelete: Cascade)
+  order           Order           @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  shipment        Shipment?       @relation(fields: [shipmentId], references: [id], onDelete: SetNull)
+  packagingType   PackagingType?  @relation(fields: [packagingTypeId], references: [id], onDelete: SetNull)
+
+  @@index([queueId])
+  @@index([orderId])
+  @@map("print_queue_item")
+}
+
+model ThermalPrinter {
+  id          String   @id @default(cuid())
+  accountId   String
+  warehouseId String
+  name        String
+  ipAddress   String
+  port        Int      @default(9100)
+  labelWidth  Float    @default(101.6)
+  labelHeight Float    @default(152.4)
+  isOnline    Boolean  @default(false)
+  lastPingAt  DateTime?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  account   LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  warehouse Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, warehouseId])
+  @@map("thermal_printer")
+}
+
+enum PrintQueueStatus {
+  PENDING
+  PURCHASING
+  READY
+  PRINTED
+  PARTIAL_FAILED
+}
+
+enum PrintItemStatus {
+  PENDING
+  PURCHASED
+  FAILED
+  PRINTED
+  REPRINTED
+}
+
+enum LabelType {
+  PRODUCT_BARCODE
+  BIN_LOCATION
+  PALLET
+  SHIPPING_OUTER
 }
 
 enum Plan {
