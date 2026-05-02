@@ -2,18 +2,13 @@ import { TRPCError } from "@trpc/server";
 import { differenceInCalendarDays } from "date-fns";
 import { z } from "zod";
 import { createTRPCRouter, protectedProc, requireRole } from "@/app/trpc/init";
-import { getObjectPresignedUrl, putObject } from "@/lib/s3";
+import { getObjectPresignedUrl } from "@/lib/s3";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
 import {
   buyShipmentLabel,
   createRateShopShipment,
 } from "@/server/integrations/easypost";
-import { dispatchOutboundWebhook } from "@/server/integrations/svix-events";
-import { enqueueIntegrationSyncJob } from "@/server/jobs/integration-sync";
-import {
-  dimWeightOzFromBox,
-  divisorForCarrierLabel,
-} from "@/server/packaging/dim-weight";
+import { recordPurchasedLabel } from "@/server/shipment/record-purchased-label";
 
 export const shipmentRouter = createTRPCRouter({
   getById: protectedProc
@@ -170,115 +165,30 @@ export const shipmentRouter = createTRPCRouter({
           easypostShipmentId,
           rateId: selectedRateId,
         });
-        let packagingTypeId: string | null = input.packagingTypeId ?? null;
-        let packagingCostCents: number | null = null;
-        let dimWeightOz: number | null = null;
-        if (packagingTypeId) {
-          const pt = await tx.packagingType.findFirst({
-            where: { id: packagingTypeId, accountId },
-          });
-          if (pt) {
-            packagingCostCents = pt.costCents;
-            const divisor = divisorForCarrierLabel(purchased.carrier);
-            dimWeightOz = dimWeightOzFromBox({
-              lengthIn: pt.lengthIn,
-              widthIn: pt.widthIn,
-              heightIn: pt.heightIn,
-              divisor,
-            });
-          } else {
-            packagingTypeId = null;
-          }
-        }
-        if (!purchased.labelUrl) {
-          throw new TRPCError({
-            code: "PRECONDITION_FAILED",
-            message: "Carrier did not return a label URL.",
-          });
-        }
-
-        const labelResponse = await fetch(purchased.labelUrl);
-        if (!labelResponse.ok) {
-          throw new TRPCError({
-            code: "INTERNAL_SERVER_ERROR",
-            message: "Failed to download label from carrier.",
-          });
-        }
-        const labelBuffer = Buffer.from(await labelResponse.arrayBuffer());
-        const key = `${accountId}/labels/${Date.now()}-${order.id}.pdf`;
-        await putObject({
-          key,
-          body: labelBuffer,
-          contentType: "application/pdf",
-        });
-        const labelDownloadUrl = await getObjectPresignedUrl({ key });
-
-        const shipment = await tx.shipment.create({
-          data: {
-            accountId,
-            orderId: input.orderId,
-            easypostShipmentId: purchased.easypostShipmentId,
-            carrier: purchased.carrier,
-            service: purchased.service,
-            weightOz: input.weightOz,
-            rateCents: purchased.rateCents,
-            labelUrl: `s3://${process.env.AWS_S3_BUCKET ?? "bucket"}/${key}`,
-            trackingNumber: purchased.trackingNumber,
-            logiqRecommended: false,
-            status: "LABEL_CREATED",
-            packagingTypeId,
-            packagingCostCents,
-            dimWeightOz,
-          },
-        });
-        await tx.order.update({
-          where: { id: input.orderId },
-          data: { fulfillmentStatus: "FULFILLED" },
-        });
-        const orderContext = await tx.order.findUnique({
-          where: { id: input.orderId },
-          select: { merchantId: true, channelOrderId: true },
-        });
-        const merchantIntegrations = await tx.integration.findMany({
-          where: {
-            accountId,
-            merchantId: orderContext?.merchantId,
-            status: "CONNECTED",
-            type: {
-              in: [
-                "SHOPIFY",
-                "WOOCOMMERCE",
-                "BIGCOMMERCE",
-                "ETSY",
-                "TIKTOK_SHOP",
-                "EBAY",
-              ],
+        try {
+          const { shipment, labelDownloadUrl } = await recordPurchasedLabel(
+            tx,
+            {
+              accountId,
+              orderId: input.orderId,
+              weightOz: input.weightOz,
+              packagingTypeId: input.packagingTypeId,
+              purchased,
             },
-          },
-          select: { id: true },
-        });
-        await Promise.allSettled(
-          merchantIntegrations.map((integration) =>
-            enqueueIntegrationSyncJob({
-              integrationId: integration.id,
-              trigger: "tracking_pushback",
-              channelOrderId: orderContext?.channelOrderId,
-              trackingNumber: shipment.trackingNumber ?? undefined,
-              carrier: shipment.carrier,
-              service: shipment.service,
-            }),
-          ),
-        );
-        await dispatchOutboundWebhook({
-          accountId,
-          eventType: "logiqwms.shipment.label_created",
-          payload: {
-            shipmentId: shipment.id,
-            orderId: shipment.orderId,
-            trackingNumber: shipment.trackingNumber,
-          },
-        });
-        return { ...shipment, labelDownloadUrl };
+          );
+          return { ...shipment, labelDownloadUrl };
+        } catch (e) {
+          const msg =
+            e instanceof Error ? e.message : "Failed to persist carrier label.";
+          throw new TRPCError({
+            code:
+              msg.includes("Carrier did not return") ||
+              msg.includes("download label")
+                ? "PRECONDITION_FAILED"
+                : "INTERNAL_SERVER_ERROR",
+            message: msg,
+          });
+        }
       });
     }),
 
