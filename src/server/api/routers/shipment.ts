@@ -8,6 +8,7 @@ import {
   buyShipmentLabel,
   createRateShopShipment,
 } from "@/server/integrations/easypost";
+import { scheduleOrderFulfilledAndLabelPurchased } from "@/server/billing/usage-ingest";
 import { recordPurchasedLabel } from "@/server/shipment/record-purchased-label";
 
 export const shipmentRouter = createTRPCRouter({
@@ -142,7 +143,7 @@ export const shipmentRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { accountId } = requireLinkedTenant(ctx);
-      return ctx.db.$transaction(async (tx) => {
+      const result = await ctx.db.$transaction(async (tx) => {
         const order = await tx.order.findFirst({
           where: { id: input.orderId, accountId },
           select: { id: true },
@@ -190,6 +191,12 @@ export const shipmentRouter = createTRPCRouter({
           });
         }
       });
+      scheduleOrderFulfilledAndLabelPurchased({
+        accountId,
+        orderId: input.orderId,
+        shipmentId: result.id,
+      });
+      return result;
     }),
 
   addTrackingEvent: protectedProc

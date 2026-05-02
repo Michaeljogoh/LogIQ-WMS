@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { createTRPCRouter, protectedProc, requireRole } from "@/app/trpc/init";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
+import { assertWithinWarehouseLimit } from "@/server/billing/plan-limits";
 
 export const warehouseRouter = createTRPCRouter({
   list: protectedProc.query(async ({ ctx }) => {
@@ -27,6 +28,11 @@ export const warehouseRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { accountId } = requireLinkedTenant(ctx);
+      const account = await ctx.db.logiqAccount.findUniqueOrThrow({
+        where: { id: accountId },
+        select: { plan: true },
+      });
+      await assertWithinWarehouseLimit(ctx.db, accountId, account.plan);
       return ctx.db.warehouse.create({
         data: {
           accountId,

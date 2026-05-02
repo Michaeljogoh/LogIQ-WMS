@@ -4,6 +4,8 @@ import type {
   Prisma,
 } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { shouldMeterOrderOverage } from "@/server/billing/plan-limits";
+import { scheduleOverageOrderMeter } from "@/server/billing/usage-ingest";
 import { decryptJson } from "@/lib/secure-json";
 import {
   normaliseOrder,
@@ -148,6 +150,7 @@ async function upsertNormalisedOrders(orders: NormalisedOrder[]) {
     merchantId: string;
     channel: string;
   }> = [];
+  const overageToMeter: Array<{ accountId: string; orderId: string }> = [];
   for (const order of orders) {
     await db.$transaction(async (tx) => {
       const products = await tx.product.findMany({
@@ -174,42 +177,52 @@ async function upsertNormalisedOrders(orders: NormalisedOrder[]) {
         select: { id: true },
       });
       const wasCreated = !existing;
-      const orderRecord = existing
-        ? await tx.order.update({
-            where: { id: existing.id },
-            data: {
-              shippingName: order.shippingName,
-              shippingLine1: order.shippingLine1,
-              shippingCity: order.shippingCity,
-              shippingState: order.shippingState,
-              shippingZip: order.shippingZip,
-              shippingCountry: order.shippingCountry,
-              slaHours: order.slaHours ?? null,
-              dueAt:
-                typeof order.slaHours === "number"
-                  ? new Date(Date.now() + order.slaHours * 60 * 60 * 1000)
-                  : null,
-            },
-          })
-        : await tx.order.create({
-            data: {
-              accountId: order.accountId,
-              merchantId: order.merchantId,
-              channelOrderId: order.channelOrderId,
-              channel: order.channel,
-              shippingName: order.shippingName,
-              shippingLine1: order.shippingLine1,
-              shippingCity: order.shippingCity,
-              shippingState: order.shippingState,
-              shippingZip: order.shippingZip,
-              shippingCountry: order.shippingCountry,
-              slaHours: order.slaHours ?? null,
-              dueAt:
-                typeof order.slaHours === "number"
-                  ? new Date(Date.now() + order.slaHours * 60 * 60 * 1000)
-                  : null,
-            },
+      let orderRecord: { id: string };
+      if (existing) {
+        orderRecord = await tx.order.update({
+          where: { id: existing.id },
+          data: {
+            shippingName: order.shippingName,
+            shippingLine1: order.shippingLine1,
+            shippingCity: order.shippingCity,
+            shippingState: order.shippingState,
+            shippingZip: order.shippingZip,
+            shippingCountry: order.shippingCountry,
+            slaHours: order.slaHours ?? null,
+            dueAt:
+              typeof order.slaHours === "number"
+                ? new Date(Date.now() + order.slaHours * 60 * 60 * 1000)
+                : null,
+          },
+        });
+      } else {
+        const markOverage = await shouldMeterOrderOverage(tx, order.accountId);
+        orderRecord = await tx.order.create({
+          data: {
+            accountId: order.accountId,
+            merchantId: order.merchantId,
+            channelOrderId: order.channelOrderId,
+            channel: order.channel,
+            shippingName: order.shippingName,
+            shippingLine1: order.shippingLine1,
+            shippingCity: order.shippingCity,
+            shippingState: order.shippingState,
+            shippingZip: order.shippingZip,
+            shippingCountry: order.shippingCountry,
+            slaHours: order.slaHours ?? null,
+            dueAt:
+              typeof order.slaHours === "number"
+                ? new Date(Date.now() + order.slaHours * 60 * 60 * 1000)
+                : null,
+          },
+        });
+        if (markOverage) {
+          overageToMeter.push({
+            accountId: order.accountId,
+            orderId: orderRecord.id,
           });
+        }
+      }
 
       await tx.orderLine.deleteMany({ where: { orderId: orderRecord.id } });
       await tx.orderLine.createMany({
@@ -239,6 +252,9 @@ async function upsertNormalisedOrders(orders: NormalisedOrder[]) {
         });
       }
     });
+  }
+  for (const o of overageToMeter) {
+    scheduleOverageOrderMeter(o.accountId, o.orderId);
   }
   await Promise.allSettled(
     createdEvents.map((event) =>

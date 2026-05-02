@@ -90,9 +90,14 @@ export function OnboardingWizard() {
               <span className="text-muted-foreground">Plan:</span>{" "}
               {profileQuery.data?.account?.plan ?? "—"}
             </p>
-            <Button className="mt-4" onClick={() => setStep(1)} type="button">
-              Continue
-            </Button>
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row">
+              <Button onClick={() => setStep(1)} type="button">
+                Continue
+              </Button>
+              <Button variant="outline" asChild>
+                <Link href="/onboarding/plan">Choose paid plan (Polar)</Link>
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : null}

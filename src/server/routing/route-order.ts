@@ -1,4 +1,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
+import { shouldMeterOrderOverage } from "@/server/billing/plan-limits";
+import { scheduleOverageOrderMeter } from "@/server/billing/usage-ingest";
 import { evaluateRoutingConditions } from "@/server/routing/conditions";
 import { distanceBetweenZipsMiles } from "@/server/routing/distance";
 import {
@@ -176,12 +178,7 @@ export async function routeOrderEngine(
       if (!can) {
         continue;
       }
-      await assignOrderToWarehouse(
-        db,
-        accountId,
-        order.id,
-        rule.warehouseId,
-      );
+      await assignOrderToWarehouse(db, accountId, order.id, rule.warehouseId);
       return { outcome: "ASSIGNED", warehouseId: rule.warehouseId };
     }
 
@@ -240,11 +237,7 @@ export async function routeOrderEngine(
     }
   }
 
-  const withStock = await listWarehousesWithFullStock(
-    db,
-    accountId,
-    lineNeeds,
-  );
+  const withStock = await listWarehousesWithFullStock(db, accountId, lineNeeds);
   const sorted = sortWarehouseIdsByDistanceToZip(
     withStock,
     warehouses,
@@ -323,6 +316,7 @@ async function splitOrderAcrossWarehouses(
     return { outcome: "ASSIGNED", warehouseId: onlyId };
   }
 
+  const overageForChildren: { accountId: string; orderId: string }[] = [];
   await db.$transaction(async (tx) => {
     await tx.order.deleteMany({
       where: {
@@ -357,6 +351,7 @@ async function splitOrderAcrossWarehouses(
         continue;
       }
 
+      const markOverage = await shouldMeterOrderOverage(tx, accountId);
       const child = await tx.order.create({
         data: {
           accountId,
@@ -386,12 +381,19 @@ async function splitOrderAcrossWarehouses(
         select: { id: true },
       });
       childIds.push(child.id);
+      if (markOverage) {
+        overageForChildren.push({ accountId, orderId: child.id });
+      }
     }
 
     if (!childIds.length) {
       throw new Error("Split allocation produced no child orders.");
     }
   });
+
+  for (const o of overageForChildren) {
+    scheduleOverageOrderMeter(o.accountId, o.orderId);
+  }
 
   const children = await db.order.findMany({
     where: { parentOrderId: order.id, accountId, channel: SPLIT_CHANNEL },

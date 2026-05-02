@@ -3,6 +3,7 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProc, requireRole } from "@/app/trpc/init";
 import { auth } from "@/lib/auth";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
+import { assertWithinMerchantLimit } from "@/server/billing/plan-limits";
 
 export const merchantRouter = createTRPCRouter({
   list: protectedProc
@@ -39,6 +40,11 @@ export const merchantRouter = createTRPCRouter({
     )
     .mutation(async ({ ctx, input }) => {
       const { accountId, userId } = requireLinkedTenant(ctx);
+      const account = await ctx.db.logiqAccount.findUniqueOrThrow({
+        where: { id: accountId },
+        select: { plan: true },
+      });
+      await assertWithinMerchantLimit(ctx.db, accountId, account.plan);
       let inviter = await ctx.db.accountUser.findUnique({
         where: { betterAuthUserId: userId },
       });
@@ -138,8 +144,12 @@ export const merchantRouter = createTRPCRouter({
 
       return merchants.map((merchant) => {
         const orderCount = orderCountByMerchant.get(merchant.id) ?? 0;
-        const merchantOrders = orders.filter((order) => order.merchantId === merchant.id);
-        const slaOrders = merchantOrders.filter((order) => order.dueAt !== null);
+        const merchantOrders = orders.filter(
+          (order) => order.merchantId === merchant.id,
+        );
+        const slaOrders = merchantOrders.filter(
+          (order) => order.dueAt !== null,
+        );
         const slaMet = slaOrders.filter((order) => {
           if (!order.dueAt) {
             return false;
