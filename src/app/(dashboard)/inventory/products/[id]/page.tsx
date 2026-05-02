@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { PrinterIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { useTRPC } from "@/app/trpc/client";
@@ -48,6 +49,18 @@ export default function Page({ params }: Readonly<{ params: { id: string } }>) {
     }),
   );
 
+  const printLabelMutation = useMutation(
+    trpc.label.generateProduct.mutationOptions({
+      onSuccess: (data) => {
+        toast.success("Label generated");
+        window.open(data.viewUrl, "_blank", "noopener,noreferrer");
+      },
+      onError: (err) => {
+        toast.error(err.message ?? "Could not generate label");
+      },
+    }),
+  );
+
   const product = productQuery.data;
   return (
     <div className="space-y-6 p-6">
@@ -60,7 +73,24 @@ export default function Page({ params }: Readonly<{ params: { id: string } }>) {
             Track stock by bin and review recent movement activity.
           </p>
         </div>
-        <Badge variant="outline">{product?.sku ?? "Loading..."}</Badge>
+        <div className="flex flex-wrap items-center gap-2">
+          <Badge variant="outline">{product?.sku ?? "Loading..."}</Badge>
+          <Button
+            type="button"
+            variant="secondary"
+            className="min-h-11 gap-2"
+            disabled={!product || printLabelMutation.isPending}
+            onClick={() => {
+              if (!product) {
+                return;
+              }
+              printLabelMutation.mutate({ productId: product.id });
+            }}
+          >
+            <PrinterIcon className="size-4" aria-hidden />
+            {printLabelMutation.isPending ? "Printing…" : "Print barcode label"}
+          </Button>
+        </div>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-3">
