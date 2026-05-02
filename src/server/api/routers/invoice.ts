@@ -2,7 +2,9 @@ import { TRPCError } from "@trpc/server";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { z } from "zod";
 import { createTRPCRouter, protectedProc, requireRole } from "@/app/trpc/init";
+import type { Prisma } from "@/generated/prisma/client";
 import { putObject } from "@/lib/s3";
+import { enrichInvoiceAnomaliesWithClaude } from "@/server/ai/billing-anomaly-claude";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
 
 function subtotalWithIncludedUnits(
@@ -522,10 +524,42 @@ export const invoiceRouter = createTRPCRouter({
           merchantId: input.merchantId,
         };
       });
+
       const merchant = await ctx.db.merchant.findFirst({
         where: { id: generated.merchantId, accountId },
         select: { name: true },
       });
+
+      const claudeFlags = await enrichInvoiceAnomaliesWithClaude({
+        invoiceNumber: generated.invoice.invoiceNumber,
+        merchantName: merchant?.name ?? "Merchant",
+        periodStart: generated.invoice.periodStart,
+        periodEnd: generated.invoice.periodEnd,
+        lines: generated.invoice.lines.map((line) => ({
+          id: line.id,
+          feeType: line.feeType,
+          description: line.description,
+          unitCount: line.unitCount,
+          unitRateCents: line.unitRateCents,
+          totalCents: line.totalCents,
+        })),
+        sourceContext: {
+          totalCents: generated.invoice.totalCents,
+          lineCount: generated.invoice.lines.length,
+        },
+      });
+      if (claudeFlags.length > 0) {
+        const current = generated.invoice.anomalyFlags;
+        const base =
+          current && typeof current === "object" && !Array.isArray(current)
+            ? { ...(current as Record<string, unknown>) }
+            : {};
+        const merged = { ...base, claudeFlags } as Prisma.InputJsonValue;
+        await ctx.db.invoice.update({
+          where: { id: generated.invoice.id },
+          data: { anomalyFlags: merged },
+        });
+      }
       if (merchant) {
         const pdfBuffer = await renderInvoicePdf({
           invoiceNumber: generated.invoice.invoiceNumber,

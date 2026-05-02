@@ -166,6 +166,10 @@ model LogiqAccount {
   thermalPrinters ThermalPrinter[]
   routingRules    RoutingRule[]
   transferOrders  TransferOrder[]
+  logiqInsights   LogIQInsight[]
+  carrierScorecards CarrierScorecard[]
+  logiqQueries    LogIQQuery[]
+  stockForecasts  StockForecast[]
 
   @@map("logiq_account")
 }
@@ -255,6 +259,8 @@ model Warehouse {
   routingRules       RoutingRule[]
   staffAssignments   WarehouseStaffAssignment[]
   managerAssignments WarehouseManager[]
+  logiqInsights        LogIQInsight[]
+  stockForecasts       StockForecast[]
 
   @@unique([accountId, code])
   @@index([accountId])
@@ -320,6 +326,7 @@ model Merchant {
   invoices Invoice[]
   integrations Integration[]
   routingRules RoutingRule[]
+  logiqInsights LogIQInsight[]
 
   @@index([accountId])
   @@map("merchant")
@@ -377,6 +384,7 @@ model Product {
   orderLines       OrderLine[]
   pickListItems    PickListItem[]
   transferOrderLines TransferOrderLine[]
+  stockForecasts   StockForecast[]
 
   @@unique([accountId, merchantId, sku])
   @@index([accountId, merchantId])
@@ -1256,6 +1264,108 @@ model TransferOrderLine {
   @@index([transferId])
   @@index([productId])
   @@map("transfer_order_line")
+}
+
+model LogIQInsight {
+  id             String          @id @default(cuid())
+  accountId      String
+  merchantId     String?
+  warehouseId    String?
+  type           InsightType
+  severity       InsightSeverity
+  title          String
+  body           String
+  data           Json?
+  actionUrl      String?
+  dedupeKey      String?
+  acknowledgedAt DateTime?
+  acknowledgedBy String?
+  createdAt      DateTime        @default(now())
+
+  account   LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  merchant  Merchant?    @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+  warehouse Warehouse? @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, acknowledgedAt])
+  @@index([accountId, dedupeKey])
+  @@map("logiq_insight")
+}
+
+model CarrierScorecard {
+  id              String   @id @default(cuid())
+  accountId       String
+  carrier         String
+  service         String
+  destinationZone Int?
+  weightTier      String?
+  onTimeRate      Float
+  damageRate      Float
+  avgCostCents    Int
+  avgActualDays   Float
+  score           Float
+  updatedAt       DateTime @updatedAt
+
+  account LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, carrier, service, destinationZone, weightTier])
+  @@index([accountId, carrier])
+  @@map("carrier_scorecard")
+}
+
+model LogIQQuery {
+  id          String   @id @default(cuid())
+  accountId   String
+  userId      String
+  queryText   String
+  explanation String?
+  chartType   String?
+  sqlText     String?
+  rowCount    Int?
+  error       String?
+  createdAt   DateTime @default(now())
+
+  account LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, createdAt])
+  @@map("logiq_query")
+}
+
+model StockForecast {
+  id                   String   @id @default(cuid())
+  accountId            String
+  productId            String
+  warehouseId        String
+  onHandQty            Int
+  avgDailyOutbound     Float
+  daysOfStockRemaining Float?
+  stockoutRisk         Float
+  outboundSparkline    Json?
+  computedAt           DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  account   LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  product   Product      @relation(fields: [productId], references: [id], onDelete: Cascade)
+  warehouse Warehouse    @relation(fields: [warehouseId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, productId, warehouseId])
+  @@index([accountId, stockoutRisk])
+  @@map("stock_forecast")
+}
+
+enum InsightType {
+  STOCKOUT_RISK
+  OVERSTOCK
+  CARRIER_PERFORMANCE_CHANGE
+  BILLING_ANOMALY
+  SLA_BREACH_RISK
+  CAPACITY_WARNING
+  PICK_RATE_DROP
+}
+
+enum InsightSeverity {
+  INFO
+  WARNING
+  CRITICAL
 }
 
 enum RoutingAction {

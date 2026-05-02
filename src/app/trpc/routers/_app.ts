@@ -2,13 +2,14 @@ import { z } from "zod";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
 import { accountUserRouter } from "@/server/api/routers/account-user";
 import { alertsRouter } from "@/server/api/routers/alerts";
-import { billingRouter } from "@/server/api/routers/billing";
 import { analyticsRouter } from "@/server/api/routers/analytics";
+import { billingRouter } from "@/server/api/routers/billing";
 import { cycleCountRouter } from "@/server/api/routers/cycle-count";
 import { integrationRouter } from "@/server/api/routers/integration";
 import { invoiceRouter } from "@/server/api/routers/invoice";
 import { labelRouter } from "@/server/api/routers/label";
 import { labelTemplateRouter } from "@/server/api/routers/label-template";
+import { logiqRouter } from "@/server/api/routers/logiq";
 import { merchantRouter } from "@/server/api/routers/merchant";
 import { merchantUserRouter } from "@/server/api/routers/merchant-user";
 import {
@@ -70,6 +71,7 @@ export const appRouter = createTRPCRouter({
   invoice: invoiceRouter,
   labelTemplate: labelTemplateRouter,
   label: labelRouter,
+  logiq: logiqRouter,
   session: authedProc.query(async ({ ctx }) => {
     return ctx.session;
   }),

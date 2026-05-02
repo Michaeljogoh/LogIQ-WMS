@@ -1,6 +1,7 @@
 /**
  * BullMQ queue definitions.
  */
+import { processLogiqJob } from "./workers/logiq.worker";
 import { processNotifyJob } from "./workers/notify.worker";
 
 export const QUEUE_NAMES = {
@@ -66,6 +67,26 @@ export const notifyQueue = {
   ) {
     await processNotifyJob({ name, payload } as Extract<
       NotifyJobPayload,
+      { name: TName }
+    >);
+  },
+};
+
+export type LogiqJobPayload =
+  | { name: "logiq.stockoutScan"; payload: { accountId?: string } }
+  | { name: "logiq.overstockScan"; payload: { accountId?: string } }
+  | { name: "logiq.carrierScorecard"; payload: { accountId?: string } }
+  | { name: "logiq.capacityForecast"; payload: { accountId?: string } }
+  | { name: "logiq.pickRateScan"; payload: { accountId?: string } }
+  | { name: "logiq.insightDigest"; payload: { accountId?: string } };
+
+export const logiqQueue = {
+  async add<TName extends LogiqJobPayload["name"]>(
+    name: TName,
+    payload: Extract<LogiqJobPayload, { name: TName }>["payload"],
+  ) {
+    await processLogiqJob({ name, payload } as Extract<
+      LogiqJobPayload,
       { name: TName }
     >);
   },
