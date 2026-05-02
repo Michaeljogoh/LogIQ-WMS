@@ -17,6 +17,8 @@ import {
 import { orderRouter } from "@/server/api/routers/order";
 import { packagingRouter } from "@/server/api/routers/packaging";
 import { pickListRouter } from "@/server/api/routers/pick-list";
+import { printQueueRouter } from "@/server/api/routers/print-queue";
+import { printerRouter } from "@/server/api/routers/printer";
 import { productRouter } from "@/server/api/routers/product";
 import { purchaseOrderRouter } from "@/server/api/routers/purchase-order";
 import { shipmentRouter } from "@/server/api/routers/shipment";
@@ -55,6 +57,8 @@ export const appRouter = createTRPCRouter({
   order: orderRouter,
   pickList: pickListRouter,
   packaging: packagingRouter,
+  printQueue: printQueueRouter,
+  printer: printerRouter,
   shipment: shipmentRouter,
   integration: integrationRouter,
   invoice: invoiceRouter,

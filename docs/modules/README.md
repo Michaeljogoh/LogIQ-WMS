@@ -30,3 +30,4 @@ Whenever a module from `AGENTS.md` is implemented or materially changed in code,
 - `module-9-notification-alert-center.md`
 - `module-10-barcode-label-generation.md`
 - `module-11-packaging-library.md`
+- `module-12-batch-label-printing.md`

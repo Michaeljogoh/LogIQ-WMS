@@ -112,6 +112,7 @@ export async function buyShipmentLabel(args: {
   service: string;
   labelUrl: string | null;
   rateCents: number;
+  zplContent: string | null;
 }> {
   const client = requireEasyPostClient();
   const bought = await client.Shipment.buy(
@@ -127,15 +128,83 @@ export async function buyShipmentLabel(args: {
     Number((selectedRate as { rate?: string } | null)?.rate ?? 0) * 100,
   );
 
+  const postageLabel = bought.postage_label as
+    | {
+        label_pdf_url?: string;
+        label_url?: string;
+        label_zpl_url?: string;
+      }
+    | null
+    | undefined;
+
+  let zplContent: string | null = null;
+  const zplUrl = postageLabel?.label_zpl_url;
+  if (zplUrl) {
+    try {
+      const zplRes = await fetch(zplUrl);
+      if (zplRes.ok) {
+        zplContent = await zplRes.text();
+      }
+    } catch {
+      zplContent = null;
+    }
+  }
+
   return {
     easypostShipmentId: bought.id,
     trackingNumber: (bought.tracking_code as string | null | undefined) ?? null,
     carrier: String(selectedRate?.carrier ?? "UNKNOWN"),
     service: String(selectedRate?.service ?? "UNKNOWN"),
     labelUrl:
-      (bought.postage_label?.label_pdf_url as string | undefined) ??
-      (bought.postage_label?.label_url as string | undefined) ??
+      (postageLabel?.label_pdf_url as string | undefined) ??
+      (postageLabel?.label_url as string | undefined) ??
       null,
     rateCents,
+    zplContent,
+  };
+}
+
+export async function retrieveShipmentZpl(easypostShipmentId: string) {
+  const client = requireEasyPostClient() as {
+    Shipment: {
+      retrieve: (id: string) => Promise<{
+        postage_label?: { label_zpl_url?: string } | null;
+      }>;
+    };
+  };
+  const shipment = await client.Shipment.retrieve(easypostShipmentId);
+  const zplUrl = shipment.postage_label?.label_zpl_url;
+  if (!zplUrl) {
+    return null;
+  }
+  try {
+    const res = await fetch(zplUrl);
+    if (!res.ok) {
+      return null;
+    }
+    return await res.text();
+  } catch {
+    return null;
+  }
+}
+
+export async function createUspsScanForm(easypostShipmentIds: string[]) {
+  const client = requireEasyPostClient() as {
+    ScanForm: {
+      create: (params: {
+        shipments: { id: string }[];
+      }) => Promise<{ id: string; form_url: string; status: string }>;
+    };
+  };
+  if (!easypostShipmentIds.length) {
+    throw new Error("No USPS shipments available for a SCAN form.");
+  }
+  const scanForm = await client.ScanForm.create({
+    shipments: easypostShipmentIds.map((id) => ({ id })),
+  });
+  return {
+    id: scanForm.id,
+    formUrl: scanForm.form_url,
+    status: scanForm.status,
   };
 }
