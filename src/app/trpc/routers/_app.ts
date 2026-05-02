@@ -21,9 +21,11 @@ import { printQueueRouter } from "@/server/api/routers/print-queue";
 import { printerRouter } from "@/server/api/routers/printer";
 import { productRouter } from "@/server/api/routers/product";
 import { purchaseOrderRouter } from "@/server/api/routers/purchase-order";
+import { routingRouter } from "@/server/api/routers/routing";
 import { shipmentRouter } from "@/server/api/routers/shipment";
 import { stockLevelRouter } from "@/server/api/routers/stock-level";
 import { supplierRouter } from "@/server/api/routers/supplier";
+import { transferRouter } from "@/server/api/routers/transfer";
 import { warehouseRouter } from "@/server/api/routers/warehouse";
 import { warehouseStaffRouter } from "@/server/api/routers/warehouse-staff";
 import { workOrderRouter } from "@/server/api/routers/work-order";
@@ -60,6 +62,8 @@ export const appRouter = createTRPCRouter({
   printQueue: printQueueRouter,
   printer: printerRouter,
   shipment: shipmentRouter,
+  routing: routingRouter,
+  transfer: transferRouter,
   integration: integrationRouter,
   invoice: invoiceRouter,
   labelTemplate: labelTemplateRouter,

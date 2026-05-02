@@ -164,6 +164,8 @@ model LogiqAccount {
   packagingTypes PackagingType[]
   printQueues     PrintQueue[]
   thermalPrinters ThermalPrinter[]
+  routingRules    RoutingRule[]
+  transferOrders  TransferOrder[]
 
   @@map("logiq_account")
 }
@@ -248,6 +250,9 @@ model Warehouse {
   pickLists          PickList[]
   printQueues        PrintQueue[]
   thermalPrinters    ThermalPrinter[]
+  transfersFrom      TransferOrder[] @relation("TransferFromWarehouse")
+  transfersTo        TransferOrder[] @relation("TransferToWarehouse")
+  routingRules       RoutingRule[]
   staffAssignments   WarehouseStaffAssignment[]
   managerAssignments WarehouseManager[]
 
@@ -314,6 +319,7 @@ model Merchant {
   contract MerchantContract?
   invoices Invoice[]
   integrations Integration[]
+  routingRules RoutingRule[]
 
   @@index([accountId])
   @@map("merchant")
@@ -370,6 +376,7 @@ model Product {
   outputWorkOrders WorkOrder[] @relation("WorkOrderOutputProduct")
   orderLines       OrderLine[]
   pickListItems    PickListItem[]
+  transferOrderLines TransferOrderLine[]
 
   @@unique([accountId, merchantId, sku])
   @@index([accountId, merchantId])
@@ -585,6 +592,7 @@ model Order {
   accountId         String
   merchantId        String
   warehouseId       String?
+  parentOrderId     String?
   channelOrderId    String
   channel           String
   status            OrderStatus       @default(PENDING)
@@ -603,6 +611,8 @@ model Order {
   account   LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
   merchant  Merchant     @relation(fields: [merchantId], references: [id], onDelete: Cascade)
   warehouse Warehouse?   @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+  parentOrder Order?     @relation("OrderSplit", fields: [parentOrderId], references: [id], onDelete: SetNull)
+  childOrders Order[]    @relation("OrderSplit")
   lines     OrderLine[]
   shipments Shipment[]
   pickList  PickList?
@@ -610,6 +620,7 @@ model Order {
   printQueueItems PrintQueueItem[]
 
   @@unique([accountId, channelOrderId, channel])
+  @@index([parentOrderId])
   @@index([accountId, merchantId, status])
   @@index([accountId, warehouseId])
   @@map("order")
@@ -1186,6 +1197,80 @@ model ThermalPrinter {
 
   @@index([accountId, warehouseId])
   @@map("thermal_printer")
+}
+
+model RoutingRule {
+  id            String        @id @default(cuid())
+  accountId     String
+  merchantId    String?
+  priority      Int           @default(0)
+  name          String
+  conditions    Json
+  action        RoutingAction
+  warehouseId   String?
+  isActive      Boolean       @default(true)
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  account   LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  merchant  Merchant?    @relation(fields: [merchantId], references: [id], onDelete: Cascade)
+  warehouse Warehouse?   @relation(fields: [warehouseId], references: [id], onDelete: SetNull)
+
+  @@index([accountId])
+  @@map("routing_rule")
+}
+
+model TransferOrder {
+  id              String         @id @default(cuid())
+  accountId       String
+  fromWarehouseId String
+  toWarehouseId   String
+  toNumber        String
+  status          TransferStatus @default(PENDING)
+  requestedBy     String
+  completedAt     DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  account       LogiqAccount @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  fromWarehouse Warehouse    @relation("TransferFromWarehouse", fields: [fromWarehouseId], references: [id], onDelete: Cascade)
+  toWarehouse   Warehouse    @relation("TransferToWarehouse", fields: [toWarehouseId], references: [id], onDelete: Cascade)
+  lines         TransferOrderLine[]
+
+  @@unique([accountId, toNumber])
+  @@index([accountId])
+  @@map("transfer_order")
+}
+
+model TransferOrderLine {
+  id           String @id @default(cuid())
+  transferId   String
+  productId    String
+  requestedQty Int
+  shippedQty   Int    @default(0)
+  receivedQty  Int    @default(0)
+
+  transfer TransferOrder @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  product  Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@index([transferId])
+  @@index([productId])
+  @@map("transfer_order_line")
+}
+
+enum RoutingAction {
+  ASSIGN_TO_WAREHOUSE
+  ASSIGN_NEAREST
+  SPLIT_SHIPMENT
+  HOLD_FOR_STOCK
+}
+
+enum TransferStatus {
+  PENDING
+  SHIPPED
+  PARTIALLY_RECEIVED
+  RECEIVED
+  CANCELLED
 }
 
 enum PrintQueueStatus {

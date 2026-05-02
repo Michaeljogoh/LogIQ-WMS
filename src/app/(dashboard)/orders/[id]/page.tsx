@@ -30,6 +30,15 @@ export default function Page() {
       },
     }),
   );
+  const runRouting = useMutation(
+    trpc.routing.route.mutationOptions({
+      onSuccess: async () => {
+        await queryClient.invalidateQueries(
+          trpc.order.getById.queryFilter({ orderId }),
+        );
+      },
+    }),
+  );
 
   return (
     <div className="space-y-6 p-6">
@@ -42,31 +51,40 @@ export default function Page() {
             {orderQuery.data?.channelOrderId} • {orderQuery.data?.status} •{" "}
             {orderQuery.data?.fulfillmentStatus}
           </p>
-          {orderQuery.data?.pickList ? (
-            <Link
-              href={`/picking/${orderQuery.data.pickList.id}`}
-              className="text-primary hover:underline"
-            >
-              Open pick list
-            </Link>
-          ) : (
+          <div className="flex flex-wrap gap-2">
             <Button
-              disabled={
-                createPickList.isPending ||
-                !orderQuery.data?.warehouseId ||
-                !orderQuery.data
-              }
-              onClick={() =>
-                createPickList.mutate({
-                  orderId,
-                  warehouseId: orderQuery.data!.warehouseId!,
-                  strategy: "SINGLE",
-                })
-              }
+              type="button"
+              variant="secondary"
+              disabled={runRouting.isPending || !orderId}
+              onClick={() => runRouting.mutate({ orderId })}
             >
-              Create pick list
+              Run routing
             </Button>
-          )}
+            {orderQuery.data?.pickList ? (
+              <Button variant="outline" asChild>
+                <Link href={`/picking/${orderQuery.data.pickList.id}`}>
+                  Open pick list
+                </Link>
+              </Button>
+            ) : (
+              <Button
+                disabled={
+                  createPickList.isPending ||
+                  !orderQuery.data?.warehouseId ||
+                  !orderQuery.data
+                }
+                onClick={() =>
+                  createPickList.mutate({
+                    orderId,
+                    warehouseId: orderQuery.data!.warehouseId!,
+                    strategy: "SINGLE",
+                  })
+                }
+              >
+                Create pick list
+              </Button>
+            )}
+          </div>
           <Table>
             <TableHeader>
               <TableRow>
