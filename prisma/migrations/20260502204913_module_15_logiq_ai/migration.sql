@@ -1,0 +1,2 @@
+-- RenameIndex
+ALTER INDEX "carrier_scorecard_accountId_carrier_service_destinationZone_wei" RENAME TO "carrier_scorecard_accountId_carrier_service_destinationZone_key";

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useState } from "react";
 import { useTRPC } from "@/app/trpc/client";
+import { BillingAnomalyPanel } from "@/components/billing/billing-anomaly-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -61,14 +62,14 @@ export default function Page() {
         <CardContent className="space-y-3">
           <p>Status: {invoice?.status}</p>
           <p>Total: ${((invoice?.totalCents ?? 0) / 100).toFixed(2)}</p>
-          <p>Anomaly flags: {String(invoice?.anomalyFlags ?? "{}")}</p>
+          <BillingAnomalyPanel anomalyFlags={invoice?.anomalyFlags} />
           <div className="space-y-1 text-sm">
             <p className="font-medium">Dispute audit trail</p>
             {invoiceQuery.data?.disputes?.length ? (
               invoiceQuery.data.disputes.map((dispute) => (
                 <p key={dispute.id}>
-                  {new Date(dispute.createdAt).toLocaleString()} - {dispute.status} -{" "}
-                  {dispute.reason}
+                  {new Date(dispute.createdAt).toLocaleString()} -{" "}
+                  {dispute.status} - {dispute.reason}
                 </p>
               ))
             ) : (

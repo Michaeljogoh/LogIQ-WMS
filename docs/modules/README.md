@@ -33,3 +33,4 @@ Whenever a module from `AGENTS.md` is implemented or materially changed in code,
 - `module-12-batch-label-printing.md`
 - `module-13-multi-warehouse-routing.md`
 - `module-14-platform-billing-polar.md`
+- `module-15-logiq-ai-copilot.md`
