@@ -1,5 +1,5 @@
-import { OperatorSignInForm } from "@/components/auth/operator-sign-in-form";
+import { SignInForm } from "@/components/auth/sign-in-form";
 
 export default function Page() {
-  return <OperatorSignInForm />;
+  return <SignInForm />;
 }

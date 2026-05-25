@@ -1,43 +1,83 @@
+import "server-only";
+
+import { ServerClient } from "postmark";
 import { render } from "react-email";
-import { Resend } from "resend";
 import { LogiqInsightDigestEmail } from "@/emails/logiq-insight-digest";
 import { MerchantInviteEmail } from "@/emails/merchant-invite";
+import {
+  MerchantTeamInviteEmail,
+  type MerchantTeamInviteEmailProps,
+} from "@/emails/merchant-team-invite";
+import {
+  OperatorTeamInviteEmail,
+  type OperatorTeamInviteEmailProps,
+} from "@/emails/operator-team-invite";
+import { ResetPasswordEmail } from "@/emails/reset-password-email";
+import { TwoFactorOtpEmail } from "@/emails/two-factor-otp";
 import { VerificationEmail } from "@/emails/verification-email";
 
-const resendApiKey = process.env.RESEND_API_KEY;
+const postmarkServerToken = process.env.POSTMARK_SERVER_TOKEN;
 
-function getResend(): Resend | null {
-  if (!resendApiKey) {
+function getPostmarkClient(): ServerClient | null {
+  if (!postmarkServerToken?.trim()) {
     return null;
   }
-  return new Resend(resendApiKey);
+  return new ServerClient(postmarkServerToken);
 }
 
-const defaultFrom =
-  process.env.RESEND_FROM_EMAIL ?? "LogIQ WMS <onboarding@resend.dev>";
+function getDefaultFrom(): string {
+  const from = process.env.POSTMARK_FROM?.trim();
+  if (!from) {
+    return "LogIQ WMS <noreply@luceoapp.com>";
+  }
+  if (from.includes("<")) {
+    return from;
+  }
+  return `LogIQ WMS <${from}>`;
+}
+
+async function sendHtmlEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  from?: string;
+}): Promise<void> {
+  const client = getPostmarkClient();
+
+  if (!client) {
+    console.info(
+      "[email] POSTMARK_SERVER_TOKEN missing; skipped send:",
+      params.subject,
+      "→",
+      params.to,
+    );
+    return;
+  }
+
+  try {
+    await client.sendEmail({
+      From: params.from ?? getDefaultFrom(),
+      To: params.to,
+      Subject: params.subject,
+      HtmlBody: params.html,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Postmark send failed";
+    throw new Error(message);
+  }
+}
 
 export async function sendMerchantInviteEmail(params: {
   to: string;
   url: string;
 }): Promise<void> {
-  const resend = getResend();
   const html = await render(<MerchantInviteEmail url={params.url} />);
-
-  if (!resend) {
-    console.info("[email] RESEND_API_KEY missing; merchant invite:", params);
-    return;
-  }
-
-  const { error } = await resend.emails.send({
-    from: defaultFrom,
+  await sendHtmlEmail({
     to: params.to,
     subject: "Your LogIQ WMS invitation",
     html,
   });
-
-  if (error) {
-    throw new Error(error.message);
-  }
 }
 
 export async function sendLogiqInsightDigestEmail(params: {
@@ -50,51 +90,75 @@ export async function sendLogiqInsightDigestEmail(params: {
     createdAt: string;
   }>;
 }): Promise<void> {
-  const resend = getResend();
   const html = await render(
     <LogiqInsightDigestEmail
       accountName={params.accountName}
       insights={params.insights}
     />,
   );
-
-  if (!resend) {
-    console.info("[email] RESEND_API_KEY missing; LogIQ digest:", params.to);
-    return;
-  }
-
-  const { error } = await resend.emails.send({
-    from: defaultFrom,
+  await sendHtmlEmail({
     to: params.to,
     subject: `LogIQ insight digest — ${params.accountName}`,
     html,
   });
+}
 
-  if (error) {
-    throw new Error(error.message);
-  }
+export async function sendMerchantTeamInviteEmail(
+  params: MerchantTeamInviteEmailProps & { to: string },
+): Promise<void> {
+  const { to, ...emailProps } = params;
+  const html = await render(<MerchantTeamInviteEmail {...emailProps} />);
+  await sendHtmlEmail({
+    to,
+    subject: `You're invited to ${params.merchantName} on LogIQ WMS`,
+    html,
+  });
+}
+
+export async function sendOperatorTeamInviteEmail(
+  params: OperatorTeamInviteEmailProps & { to: string },
+): Promise<void> {
+  const { to, ...emailProps } = params;
+  const html = await render(<OperatorTeamInviteEmail {...emailProps} />);
+  await sendHtmlEmail({
+    to,
+    subject: `You're invited to ${params.accountName} on LogIQ WMS`,
+    html,
+  });
+}
+
+export async function sendTwoFactorOtpEmail(params: {
+  to: string;
+  otp: string;
+}): Promise<void> {
+  const html = await render(<TwoFactorOtpEmail otp={params.otp} />);
+  await sendHtmlEmail({
+    to: params.to,
+    subject: "Your LogIQ WMS verification code",
+    html,
+  });
+}
+
+export async function sendResetPasswordEmail(params: {
+  to: string;
+  url: string;
+}): Promise<void> {
+  const html = await render(<ResetPasswordEmail url={params.url} />);
+  await sendHtmlEmail({
+    to: params.to,
+    subject: "Reset your LogIQ WMS password",
+    html,
+  });
 }
 
 export async function sendVerificationEmail(params: {
   to: string;
   url: string;
 }): Promise<void> {
-  const resend = getResend();
   const html = await render(<VerificationEmail url={params.url} />);
-
-  if (!resend) {
-    console.info("[email] RESEND_API_KEY missing; verification:", params);
-    return;
-  }
-
-  const { error } = await resend.emails.send({
-    from: defaultFrom,
+  await sendHtmlEmail({
     to: params.to,
     subject: "Verify your LogIQ WMS email",
     html,
   });
-
-  if (error) {
-    throw new Error(error.message);
-  }
 }

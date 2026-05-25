@@ -1,172 +1,114 @@
 "use client";
 
-import {
-  AudioLinesIcon,
-  BookOpenIcon,
-  BotIcon,
-  FrameIcon,
-  GalleryVerticalEndIcon,
-  MapIcon,
-  PieChartIcon,
-  Settings2Icon,
-  TerminalIcon,
-  TerminalSquareIcon,
-} from "lucide-react";
+import { Building2Icon } from "lucide-react";
+import Link from "next/link";
 import type * as React from "react";
 import {
   Sidebar,
   SidebarContent,
   SidebarFooter,
   SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import type {
+  MerchantPermission,
+  SidebarNavContext,
+} from "@/config/dashboard-sidebar-config";
+import { authClient } from "@/lib/auth-client";
+import {
+  getDashboardHomeHref,
+  getDashboardNavSections,
+} from "@/lib/dashboard-sidebar";
 import { NavMain } from "./nav-main";
-import { NavProjects } from "./nav-projects";
 import { NavUser } from "./nav-user";
-import { TeamSwitcher } from "./team-switcher";
 
-// This is sample data.
-const data = {
-  user: {
-    name: "shadcn",
-    email: "m@example.com",
-    avatar: "/avatars/shadcn.jpg",
-  },
-  teams: [
-    {
-      name: "Acme Inc",
-      logo: <GalleryVerticalEndIcon />,
-      plan: "Enterprise",
-    },
-    {
-      name: "Acme Corp.",
-      logo: <AudioLinesIcon />,
-      plan: "Startup",
-    },
-    {
-      name: "Evil Corp.",
-      logo: <TerminalIcon />,
-      plan: "Free",
-    },
-  ],
-  navMain: [
-    {
-      title: "Playground",
-      url: "#",
-      icon: <TerminalSquareIcon />,
-      isActive: true,
-      items: [
-        {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: <BotIcon />,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: <BookOpenIcon />,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: <Settings2Icon />,
-      items: [
-        {
-          title: "General",
-          url: "#",
-        },
-        {
-          title: "Team",
-          url: "#",
-        },
-        {
-          title: "Billing",
-          url: "#",
-        },
-        {
-          title: "Limits",
-          url: "#",
-        },
-      ],
-    },
-  ],
-  projects: [
-    {
-      name: "Design Engineering",
-      url: "#",
-      icon: <FrameIcon />,
-    },
-    {
-      name: "Sales & Marketing",
-      url: "#",
-      icon: <PieChartIcon />,
-    },
-    {
-      name: "Travel",
-      url: "#",
-      icon: <MapIcon />,
-    },
-  ],
-};
+function formatPlanLabel(plan: string): string {
+  if (!plan) return "";
+  const rest = plan.slice(1).toLowerCase().replaceAll("_", " ");
+  return plan.charAt(0).toUpperCase() + rest;
+}
 
-export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
+export function AppSidebar({
+  user,
+  workspaceName,
+  workspacePlan,
+  systemRole,
+  merchantId = null,
+  merchantPermissions = [],
+  navContext = "operator",
+  ...props
+}: React.ComponentProps<typeof Sidebar> & {
+  user: { name: string; email: string; image?: string | null };
+  workspaceName: string;
+  workspacePlan?: string;
+  systemRole: string | null;
+  merchantId?: string | null;
+  merchantPermissions?: MerchantPermission[];
+  navContext?: SidebarNavContext;
+}) {
+  const clientSession = authClient.useSession();
+  const sessionUser = clientSession.data?.user as
+    | {
+        systemRole?: string | null;
+        merchantId?: string | null;
+        merchantPermissions?: string[] | null;
+      }
+    | undefined;
+
+  const resolvedRole = systemRole ?? sessionUser?.systemRole ?? null;
+  const resolvedMerchantId = merchantId ?? sessionUser?.merchantId ?? null;
+  const resolvedMerchantPermissions =
+    merchantPermissions.length > 0
+      ? merchantPermissions
+      : ((sessionUser?.merchantPermissions ?? []) as MerchantPermission[]);
+
+  const sections = getDashboardNavSections(
+    resolvedRole,
+    resolvedMerchantPermissions,
+    navContext,
+    { merchantId: resolvedMerchantId },
+  );
+  const homeHref = getDashboardHomeHref(resolvedRole, navContext);
+  const planLabel = workspacePlan ? formatPlanLabel(workspacePlan) : null;
+
   return (
     <Sidebar collapsible="icon" {...props}>
       <SidebarHeader>
-        <TeamSwitcher teams={data.teams} />
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild tooltip={workspaceName}>
+              <Link href={homeHref}>
+                <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                  <Building2Icon className="size-4" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">
+                    {workspaceName}
+                  </span>
+                  {planLabel ? (
+                    <span className="truncate text-xs text-muted-foreground">
+                      {planLabel}
+                    </span>
+                  ) : null}
+                </div>
+              </Link>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
-        <NavMain items={data.navMain} />
-        <NavProjects projects={data.projects} />
+      <SidebarContent className="overflow-x-hidden">
+        <NavMain sections={sections} />
       </SidebarContent>
       <SidebarFooter>
-        <NavUser user={data.user} />
+        <NavUser
+          user={user}
+          systemRole={resolvedRole}
+          navContext={navContext}
+          merchantPermissions={resolvedMerchantPermissions}
+        />
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>

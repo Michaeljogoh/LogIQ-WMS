@@ -125,13 +125,14 @@ After transactional invoice create, `enrichInvoiceAnomaliesWithClaude` may appen
 | `ANTHROPIC_API_KEY` | For NL query, merchant chat, billing Claude enrichment | Anthropic API key (server only)                            |
 | `ANTHROPIC_MODEL`   | No                                                     | Defaults to `claude-sonnet-4-5-20250929` in code           |
 | `REDIS_URL`         | Recommended                                            | Capacity forecast cache; falls back to in-memory TTL cache |
-| `RESEND_API_KEY`    | For digest emails                                      | Same as rest of app; digest skipped / logged if missing    |
+| `POSTMARK_SERVER_TOKEN` | For digest emails                                  | Same as rest of app; digest skipped / logged if missing    |
+| `POSTMARK_FROM`         | Sender address (e.g. `noreply@luceoapp.com`)       | Must be a verified Postmark sender signature               |
 
 ## How to verify
 
 1. **Migrate:** `pnpm exec prisma migrate deploy` (or `pnpm exec prisma migrate dev` locally).
 2. **Generate client:** `pnpm exec prisma generate` (also runs on `postinstall`).
-3. **Env:** set `ANTHROPIC_API_KEY` (and optionally `REDIS_URL`, `RESEND_API_KEY`).
+3. **Env:** set `ANTHROPIC_API_KEY` (and optionally `REDIS_URL`, `POSTMARK_SERVER_TOKEN`, `POSTMARK_FROM`).
 4. **Operator UI:** sign in as owner → `/logiq` → run a suggestion query; click **Run intelligence scans** → confirm insights / stock forecast / scorecards update (data-dependent).
 5. **Merchant UI:** `/portal/chat` → send a message; confirm streamed reply (503 if no API key).
 6. **Invoice:** generate an invoice for a merchant with contract → open invoice detail → `BillingAnomalyPanel` shows deterministic flags; with Claude enabled, check for `claudeFlags` in `anomalyFlags` JSON.

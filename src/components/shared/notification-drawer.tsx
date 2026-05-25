@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { useTRPC } from "@/app/trpc/client";
+import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -16,9 +17,14 @@ import {
 export function NotificationDrawer({ trigger }: { trigger: ReactNode }) {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
-  const notifications = useQuery(
-    trpc.notifications.list.queryOptions({ limit: 50 }),
-  );
+  const session = authClient.useSession();
+  const accountId = (session.data?.user as { accountId?: string | null } | undefined)
+    ?.accountId;
+
+  const notifications = useQuery({
+    ...trpc.notifications.list.queryOptions({ limit: 50 }),
+    enabled: Boolean(accountId),
+  });
   const markRead = useMutation(
     trpc.notifications.markRead.mutationOptions({
       onSuccess: async () => {

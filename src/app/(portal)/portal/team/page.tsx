@@ -32,8 +32,13 @@ type InviteForm = z.infer<typeof inviteSchema>;
 export default function Page() {
   const trpc = useTRPC();
   const session = authClient.useSession();
-  const merchantId = (session.data?.user as { merchantId?: string } | undefined)
-    ?.merchantId;
+  const sessionUser = session.data?.user as
+    | { merchantId?: string; systemRole?: string }
+    | undefined;
+  const merchantId = sessionUser?.merchantId;
+  const isOwner =
+    sessionUser?.systemRole === "MERCHANT_OWNER" ||
+    sessionUser?.systemRole === "PLATFORM_ADMIN";
 
   const teamQuery = useQuery({
     ...trpc.merchantUser.listForMerchant.queryOptions(
@@ -45,7 +50,7 @@ export default function Page() {
   const inviteMutation = useMutation(
     trpc.merchantUser.invite.mutationOptions({
       onSuccess: () => {
-        toast.success("Invitation sent");
+        toast.success("Invitation sent with sign-in instructions");
         void teamQuery.refetch();
         form.reset({ email: "", read: true, write: false, billing: false });
       },
@@ -66,7 +71,8 @@ export default function Page() {
   if (!merchantId) {
     return (
       <div className="p-6 text-sm text-muted-foreground">
-        Complete invitation linking, then reload this page to manage your team.
+        Sign in with your merchant invitation, then return here to manage your
+        team.
       </div>
     );
   }
@@ -80,11 +86,13 @@ export default function Page() {
         </p>
       </div>
 
+      {isOwner ? (
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Invite user</CardTitle>
           <CardDescription>
-            Sends a magic link to join this merchant portal.
+            Sends an email with a temporary password and sign-in link for the
+            merchant portal.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -154,6 +162,7 @@ export default function Page() {
           </form>
         </CardContent>
       </Card>
+      ) : null}
 
       <Card>
         <CardHeader>

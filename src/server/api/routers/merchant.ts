@@ -1,9 +1,9 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createTRPCRouter, protectedProc, requireRole } from "@/app/trpc/init";
-import { auth } from "@/lib/auth";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
 import { assertWithinMerchantLimit } from "@/server/billing/plan-limits";
+import { inviteMerchantUser } from "@/server/helpers/merchant-team-invite";
 
 export const merchantRouter = createTRPCRouter({
   list: protectedProc
@@ -79,16 +79,15 @@ export const merchantRouter = createTRPCRouter({
         },
       });
 
-      const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-      const callbackURL = `${base}/portal/dashboard?merchantUserId=${merchantUser.id}`;
-
-      await auth.api.signInMagicLink({
-        body: {
-          email: input.email,
-          callbackURL,
-          name: input.name,
-        },
-        headers: ctx.req.headers,
+      await inviteMerchantUser({
+        accountId,
+        merchantId: merchant.id,
+        email: input.email,
+        name: input.name,
+        systemRole: "MERCHANT_OWNER",
+        permissions: [],
+        invitedBy: inviter.id,
+        merchantUserId: merchantUser.id,
       });
 
       return { merchantId: merchant.id, merchantUserId: merchantUser.id };

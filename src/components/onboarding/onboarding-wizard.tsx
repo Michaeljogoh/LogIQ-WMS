@@ -95,7 +95,9 @@ export function OnboardingWizard() {
                 Continue
               </Button>
               <Button variant="outline" asChild>
-                <Link href="/onboarding/plan">Choose paid plan (Polar)</Link>
+                <Link href="/settings/billing/plan">
+                  Choose paid plan (Polar)
+                </Link>
               </Button>
             </div>
           </CardContent>

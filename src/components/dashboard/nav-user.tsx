@@ -1,13 +1,14 @@
 "use client";
 
 import {
-  BadgeCheckIcon,
-  BellIcon,
   ChevronsUpDownIcon,
   CreditCardIcon,
   LogOutIcon,
-  SparklesIcon,
+  RocketIcon,
+  UsersIcon,
 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -24,17 +25,73 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import type {
+  MerchantPermission,
+  SidebarNavContext,
+} from "@/config/dashboard-sidebar-config";
+import { authClient } from "@/lib/auth-client";
+import {
+  canManageOperatorBilling,
+  isMerchantPortalRole,
+} from "@/lib/dashboard-sidebar";
+
+function userInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) {
+    return "?";
+  }
+  if (parts.length === 1) {
+    const w = parts[0] ?? "";
+    return w.length >= 2 ? w.slice(0, 2).toUpperCase() : w.toUpperCase();
+  }
+  const first = parts[0] ?? "";
+  const last = parts[parts.length - 1] ?? "";
+  return `${first.charAt(0)}${last.charAt(0)}`.toUpperCase();
+}
+
+function merchantHasPermission(
+  permissions: MerchantPermission[],
+  required: MerchantPermission,
+): boolean {
+  return permissions.includes(required);
+}
 
 export function NavUser({
   user,
+  systemRole,
+  navContext = "operator",
+  merchantPermissions = [],
 }: {
   user: {
     name: string;
     email: string;
-    avatar: string;
+    image?: string | null;
   };
+  systemRole: string | null;
+  navContext?: SidebarNavContext;
+  merchantPermissions?: MerchantPermission[];
 }) {
   const { isMobile } = useSidebar();
+  const router = useRouter();
+  const initials = userInitials(user.name);
+
+  const isPortal = navContext === "portal" || isMerchantPortalRole(systemRole);
+  const showOperatorBilling = canManageOperatorBilling(systemRole);
+  const showMerchantBilling =
+    isPortal &&
+    (systemRole === "MERCHANT_OWNER" ||
+      systemRole === "PLATFORM_ADMIN" ||
+      merchantHasPermission(merchantPermissions, "BILLING"));
+  const showMerchantTeam =
+    isPortal &&
+    (systemRole === "MERCHANT_OWNER" ||
+      systemRole === "PLATFORM_ADMIN" ||
+      merchantHasPermission(merchantPermissions, "WRITE"));
+  const showOperatorTeam =
+    !isPortal &&
+    (systemRole === "THREEPL_ACCOUNT_OWNER" || systemRole === "PLATFORM_ADMIN");
+
+  const signOutRedirect = "/sign-in";
 
   return (
     <SidebarMenu>
@@ -46,8 +103,10 @@ export function NavUser({
               className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
             >
               <Avatar className="h-8 w-8 rounded-lg">
-                <AvatarImage src={user.avatar} alt={user.name} />
-                <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                <AvatarImage src={user.image ?? undefined} alt={user.name} />
+                <AvatarFallback className="rounded-lg">
+                  {initials}
+                </AvatarFallback>
               </Avatar>
               <div className="grid flex-1 text-left text-sm leading-tight">
                 <span className="truncate font-medium">{user.name}</span>
@@ -65,8 +124,10 @@ export function NavUser({
             <DropdownMenuLabel className="p-0 font-normal">
               <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
                 <Avatar className="h-8 w-8 rounded-lg">
-                  <AvatarImage src={user.avatar} alt={user.name} />
-                  <AvatarFallback className="rounded-lg">CN</AvatarFallback>
+                  <AvatarImage src={user.image ?? undefined} alt={user.name} />
+                  <AvatarFallback className="rounded-lg">
+                    {initials}
+                  </AvatarFallback>
                 </Avatar>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-medium">{user.name}</span>
@@ -75,29 +136,66 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <SparklesIcon />
-                Upgrade to Pro
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuGroup>
-              <DropdownMenuItem>
-                <BadgeCheckIcon />
-                Account
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <CreditCardIcon />
-                Billing
-              </DropdownMenuItem>
-              <DropdownMenuItem>
-                <BellIcon />
-                Notifications
-              </DropdownMenuItem>
-            </DropdownMenuGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            {showOperatorBilling ? (
+              <>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings/billing/plan">
+                      <RocketIcon />
+                      Upgrade plan
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+              </>
+            ) : null}
+            {showOperatorTeam || showMerchantTeam || showMerchantBilling ? (
+              <DropdownMenuGroup>
+                {showOperatorTeam ? (
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings/users">
+                      <UsersIcon />
+                      Team
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
+                {showMerchantTeam ? (
+                  <DropdownMenuItem asChild>
+                    <Link href="/portal/team">
+                      <UsersIcon />
+                      Team
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
+                {showOperatorBilling ? (
+                  <DropdownMenuItem asChild>
+                    <Link href="/settings/billing">
+                      <CreditCardIcon />
+                      Billing
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
+                {showMerchantBilling ? (
+                  <DropdownMenuItem asChild>
+                    <Link href="/portal/billing">
+                      <CreditCardIcon />
+                      Billing
+                    </Link>
+                  </DropdownMenuItem>
+                ) : null}
+              </DropdownMenuGroup>
+            ) : null}
+            {(showOperatorTeam ||
+              showMerchantTeam ||
+              showMerchantBilling ||
+              showOperatorBilling) && <DropdownMenuSeparator />}
+            <DropdownMenuItem
+              onClick={async () => {
+                await authClient.signOut();
+                router.push(signOutRedirect);
+                router.refresh();
+              }}
+            >
               <LogOutIcon />
               Log out
             </DropdownMenuItem>

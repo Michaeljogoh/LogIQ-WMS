@@ -1,4 +1,7 @@
-import type { MerchantPermission } from "@/generated/prisma/client";
+import type {
+  MerchantPermission,
+  MerchantUser,
+} from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 
 export type SessionTenantFields = {
@@ -9,6 +12,54 @@ export type SessionTenantFields = {
   merchantId: string | null;
   merchantPermissions: string[];
 };
+
+function merchantUserToTenantFields(
+  merchantUser: MerchantUser,
+): SessionTenantFields {
+  const perms =
+    merchantUser.systemRole === "MERCHANT_OWNER"
+      ? (["READ", "WRITE", "BILLING"] as const)
+      : merchantUser.permissions.map((p: MerchantPermission) => String(p));
+
+  return {
+    accountId: merchantUser.accountId,
+    systemRole: merchantUser.systemRole,
+    managedWarehouseIds: [],
+    warehouseAssignments: "[]",
+    merchantId: merchantUser.merchantId,
+    merchantPermissions: [...perms],
+  };
+}
+
+async function linkPendingMerchantInviteByEmail(
+  betterAuthUserId: string,
+): Promise<MerchantUser | null> {
+  const authUser = await db.user.findUnique({
+    where: { id: betterAuthUserId },
+    select: { email: true },
+  });
+  if (!authUser?.email) {
+    return null;
+  }
+
+  const pending = await db.merchantUser.findMany({
+    where: {
+      email: { equals: authUser.email, mode: "insensitive" },
+      betterAuthUserId: null,
+    },
+    orderBy: { createdAt: "desc" },
+    take: 2,
+  });
+
+  if (pending.length !== 1) {
+    return null;
+  }
+
+  return db.merchantUser.update({
+    where: { id: pending[0].id },
+    data: { betterAuthUserId },
+  });
+}
 
 export async function buildSessionTenantFields(
   betterAuthUserId: string,
@@ -42,26 +93,18 @@ export async function buildSessionTenantFields(
     };
   }
 
-  const merchantUser = await db.merchantUser.findFirst({
+  let merchantUser = await db.merchantUser.findFirst({
     where: {
       betterAuthUserId,
     },
   });
 
-  if (merchantUser) {
-    const perms =
-      merchantUser.systemRole === "MERCHANT_OWNER"
-        ? (["READ", "WRITE", "BILLING"] as const)
-        : merchantUser.permissions.map((p: MerchantPermission) => String(p));
+  if (!merchantUser) {
+    merchantUser = await linkPendingMerchantInviteByEmail(betterAuthUserId);
+  }
 
-    return {
-      accountId: merchantUser.accountId,
-      systemRole: merchantUser.systemRole,
-      managedWarehouseIds: [],
-      warehouseAssignments: "[]",
-      merchantId: merchantUser.merchantId,
-      merchantPermissions: [...perms],
-    };
+  if (merchantUser) {
+    return merchantUserToTenantFields(merchantUser);
   }
 
   return null;

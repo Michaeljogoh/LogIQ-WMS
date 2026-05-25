@@ -15,6 +15,9 @@ import {
   SidebarTrigger,
 } from "@/components/ui/sidebar";
 import { auth } from "@/lib/auth";
+import { db } from "@/lib/db";
+import { ensureOperatorWorkspaceForUser } from "@/server/helpers/ensure-operator-workspace";
+import { buildSessionTenantFields } from "@/server/helpers/session-enrichment";
 
 export default async function DashboardLayout({
   children,
@@ -26,14 +29,33 @@ export default async function DashboardLayout({
     redirect("/sign-in");
   }
 
-  const user = session.user as {
+  const sessionUser = session.user as {
+    id: string;
+    name?: string | null;
+    email?: string | null;
+    image?: string | null;
     accountId?: string | null;
     systemRole?: string | null;
+    merchantPermissions?: string[] | null;
   };
 
-  if (!user.accountId) {
-    redirect("/sign-in");
+  let tenant =
+    sessionUser.accountId && sessionUser.systemRole
+      ? {
+          accountId: sessionUser.accountId,
+          systemRole: sessionUser.systemRole,
+        }
+      : await buildSessionTenantFields(sessionUser.id);
+
+  if (!tenant) {
+    tenant = await ensureOperatorWorkspaceForUser(sessionUser.id);
   }
+
+  const user = {
+    ...sessionUser,
+    accountId: tenant?.accountId ?? sessionUser.accountId ?? null,
+    systemRole: tenant?.systemRole ?? sessionUser.systemRole ?? null,
+  };
 
   if (
     user.systemRole === "MERCHANT_OWNER" ||
@@ -42,9 +64,29 @@ export default async function DashboardLayout({
     redirect("/portal/dashboard");
   }
 
+  const account = user.accountId
+    ? await db.logiqAccount.findUnique({
+        where: { id: user.accountId },
+        select: { name: true, plan: true },
+      })
+    : null;
+
+  const workspaceName = account?.name ?? "LogIQ WMS";
+  const workspacePlan = account?.plan ?? "STARTER";
+
   return (
     <SidebarProvider>
-      <AppSidebar />
+      <AppSidebar
+        user={{
+          name: user.name?.trim() || "Operator",
+          email: user.email ?? "",
+          image: user.image,
+        }}
+        workspaceName={workspaceName}
+        workspacePlan={workspacePlan}
+        systemRole={user.systemRole ?? null}
+        navContext="operator"
+      />
       <SidebarInset>
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <SidebarTrigger className="-ml-1" />

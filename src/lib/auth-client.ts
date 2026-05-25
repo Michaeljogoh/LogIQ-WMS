@@ -6,6 +6,7 @@ import {
   magicLinkClient,
   organizationClient,
 } from "better-auth/client/plugins";
+import { twoFactorClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 
 const baseURL =
@@ -19,6 +20,19 @@ export const authClient = createAuthClient({
     organizationClient(),
     magicLinkClient(),
     genericOAuthClient(),
+    twoFactorClient({
+      twoFactorPage: "/two-factor",
+    }),
     customSessionClient(),
   ],
 });
+
+export type SessionUser = NonNullable<
+  ReturnType<typeof authClient.useSession>["data"]
+>["user"] & {
+  twoFactorEnabled?: boolean;
+  twoFactorSetupCompleted?: boolean;
+  accountId?: string | null;
+  systemRole?: string | null;
+  merchantId?: string | null;
+};
