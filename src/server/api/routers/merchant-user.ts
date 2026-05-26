@@ -1,15 +1,14 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import {
-  authedProc,
   createTRPCRouter,
   protectedProc,
   requireRole,
 } from "@/app/trpc/init";
 import type { MerchantPermission } from "@/generated/prisma/client";
-import { auth } from "@/lib/auth";
 import { revokeBetterAuthSessions } from "@/lib/revoke-sessions";
 import { requireLinkedTenant, requireUserId } from "@/server/api/ctx-ids";
+import { inviteMerchantUser } from "@/server/helpers/merchant-team-invite";
 
 async function assertMerchantOwnerForMerchant(params: {
   db: typeof import("@/lib/db").db;
@@ -37,35 +36,6 @@ async function assertMerchantOwnerForMerchant(params: {
 }
 
 export const merchantUserRouter = createTRPCRouter({
-  claim: authedProc
-    .input(z.object({ merchantUserId: z.string() }))
-    .mutation(async ({ ctx, input }) => {
-      const userId = requireUserId(ctx);
-      const row = await ctx.db.merchantUser.findFirst({
-        where: {
-          id: input.merchantUserId,
-          betterAuthUserId: null,
-        },
-      });
-      if (!row) {
-        throw new TRPCError({ code: "NOT_FOUND" });
-      }
-
-      const user = await ctx.db.user.findUnique({
-        where: { id: userId },
-      });
-      if (!user || user.email.toLowerCase() !== row.email.toLowerCase()) {
-        throw new TRPCError({ code: "FORBIDDEN" });
-      }
-
-      await ctx.db.merchantUser.update({
-        where: { id: row.id },
-        data: { betterAuthUserId: userId },
-      });
-
-      return { ok: true as const };
-    }),
-
   invite: protectedProc
     .use(requireRole("MERCHANT_OWNER", "PLATFORM_ADMIN"))
     .input(
@@ -111,27 +81,17 @@ export const merchantUserRouter = createTRPCRouter({
         invitedById = ownerRecord?.id ?? "system";
       }
 
-      const invited = await ctx.db.merchantUser.create({
-        data: {
-          accountId,
-          merchantId: input.merchantId,
-          systemRole: "MERCHANT_USER",
-          permissions: input.permissions as MerchantPermission[],
-          email: input.email,
-          invitedBy: invitedById,
-        },
+      const result = await inviteMerchantUser({
+        accountId,
+        merchantId: input.merchantId,
+        email: input.email,
+        name: input.email,
+        systemRole: "MERCHANT_USER",
+        permissions: input.permissions as MerchantPermission[],
+        invitedBy: invitedById,
       });
 
-      const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
-      await auth.api.signInMagicLink({
-        body: {
-          email: input.email,
-          callbackURL: `${base}/portal/dashboard?merchantUserId=${invited.id}`,
-        },
-        headers: ctx.req.headers,
-      });
-
-      return { id: invited.id };
+      return { id: result.merchantUserId };
     }),
 
   update: protectedProc

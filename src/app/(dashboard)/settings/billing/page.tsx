@@ -66,7 +66,7 @@ export default function BillingSettingsPage() {
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" asChild>
-            <Link href="/settings/billing/upgrade">Change plan</Link>
+            <Link href="/settings/billing/plan">Change plan</Link>
           </Button>
           <Button
             type="button"

@@ -5,8 +5,15 @@ import { customSession } from "better-auth/plugins/custom-session";
 import { genericOAuth } from "better-auth/plugins/generic-oauth";
 import { magicLink } from "better-auth/plugins/magic-link";
 import { organization } from "better-auth/plugins/organization";
+import { twoFactor } from "better-auth/plugins/two-factor";
 import { db } from "@/lib/db";
-import { sendMerchantInviteEmail, sendVerificationEmail } from "@/lib/email";
+import {
+  sendMerchantInviteEmail,
+  sendResetPasswordEmail,
+  sendTwoFactorOtpEmail,
+  sendVerificationEmail,
+} from "@/lib/email";
+import { ensureOperatorWorkspaceForUser } from "@/server/helpers/ensure-operator-workspace";
 import { buildSessionTenantFields } from "@/server/helpers/session-enrichment";
 import {
   syncAccountUserForMember,
@@ -35,6 +42,13 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
+    revokeSessionsOnPasswordReset: true,
+    sendResetPassword: async ({ user, url }) => {
+      void sendResetPasswordEmail({
+        to: user.email,
+        url,
+      });
+    },
   },
   emailVerification: {
     sendOnSignUp: true,
@@ -93,6 +107,17 @@ export const auth = betterAuth({
         },
       },
     }),
+    twoFactor({
+      issuer: "LogIQ WMS",
+      otpOptions: {
+        async sendOTP({ user, otp }) {
+          await sendTwoFactorOtpEmail({
+            to: user.email,
+            otp,
+          });
+        },
+      },
+    }),
     magicLink({
       sendMagicLink: async ({ email, url }) => {
         await sendMerchantInviteEmail({ to: email, url });
@@ -136,14 +161,38 @@ export const auth = betterAuth({
         ]
       : []),
     customSession(async ({ user, session }) => {
-      const tenant = await buildSessionTenantFields(user.id);
+      let tenant = await buildSessionTenantFields(user.id);
       if (!tenant) {
-        return { session, user };
+        tenant = await ensureOperatorWorkspaceForUser(user.id);
+      }
+
+      const authUser = await db.user.findUnique({
+        where: { id: user.id },
+        select: {
+          twoFactorEnabled: true,
+          twoFactorSetupCompleted: true,
+        },
+      });
+
+      const twoFactorFields = {
+        twoFactorEnabled: authUser?.twoFactorEnabled ?? false,
+        twoFactorSetupCompleted: authUser?.twoFactorSetupCompleted ?? false,
+      };
+
+      if (!tenant) {
+        return {
+          session,
+          user: {
+            ...user,
+            ...twoFactorFields,
+          },
+        };
       }
       return {
         session,
         user: {
           ...user,
+          ...twoFactorFields,
           accountId: tenant.accountId,
           systemRole: tenant.systemRole,
           managedWarehouseIds: tenant.managedWarehouseIds,

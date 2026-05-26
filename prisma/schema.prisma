@@ -15,6 +15,12 @@ model User {
   email         String
   emailVerified Boolean  @default(false)
   image         String?
+  /// Better Auth two-factor plugin
+  twoFactorEnabled        Boolean @default(false)
+  /// Operator self sign-up: 2FA cannot be disabled
+  twoFactorRequired       Boolean @default(false)
+  /// User finished first-time 2FA setup (or explicitly opted out when allowed)
+  twoFactorSetupCompleted Boolean @default(false)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -22,9 +28,22 @@ model User {
   accounts        Account[]
   members         Member[]
   invitationsSent Invitation[] @relation("invitation_inviter")
+  twoFactors      TwoFactor[]
 
   @@unique([email])
   @@map("user")
+}
+
+model TwoFactor {
+  id          String  @id @default(cuid())
+  userId      String
+  secret      String
+  backupCodes String
+  verified    Boolean @default(false)
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("two_factor")
 }
 
 model Session {

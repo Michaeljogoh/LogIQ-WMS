@@ -24,6 +24,7 @@ import { printerRouter } from "@/server/api/routers/printer";
 import { productRouter } from "@/server/api/routers/product";
 import { purchaseOrderRouter } from "@/server/api/routers/purchase-order";
 import { routingRouter } from "@/server/api/routers/routing";
+import { securityRouter } from "@/server/api/routers/security";
 import { shipmentRouter } from "@/server/api/routers/shipment";
 import { stockLevelRouter } from "@/server/api/routers/stock-level";
 import { supplierRouter } from "@/server/api/routers/supplier";
@@ -72,6 +73,7 @@ export const appRouter = createTRPCRouter({
   labelTemplate: labelTemplateRouter,
   label: labelRouter,
   logiq: logiqRouter,
+  security: securityRouter,
   session: authedProc.query(async ({ ctx }) => {
     return ctx.session;
   }),

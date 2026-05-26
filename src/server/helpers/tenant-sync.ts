@@ -30,6 +30,12 @@ export function orgMemberRoleToSystemRole(orgRole: string): SystemRole {
   }
 }
 
+export function systemRoleToOrgMemberRole(
+  systemRole: "WAREHOUSE_MANAGER" | "WAREHOUSE_STAFF",
+): string {
+  return systemRole === "WAREHOUSE_MANAGER" ? "admin" : "member";
+}
+
 export async function upsertLogiqAccount(
   organization: BasicOrg,
 ): Promise<void> {
@@ -59,6 +65,7 @@ export async function syncAccountUserForMember(
   });
 
   const systemRole = orgMemberRoleToSystemRole(member.role);
+  const nameParts = user.name?.split(/\s+/) ?? [];
 
   await db.accountUser.upsert({
     where: { betterAuthUserId: user.id },
@@ -67,13 +74,14 @@ export async function syncAccountUserForMember(
       betterAuthUserId: user.id,
       systemRole,
       email: user.email,
-      firstName: user.name?.split(/\s+/)[0] ?? null,
-      lastName: user.name?.split(/\s+/).slice(1).join(" ") || null,
+      firstName: nameParts[0] ?? null,
+      lastName: nameParts.slice(1).join(" ") || null,
     },
     update: {
       accountId: account.id,
-      systemRole,
       email: user.email,
+      firstName: nameParts[0] ?? null,
+      lastName: nameParts.slice(1).join(" ") || null,
     },
   });
 }

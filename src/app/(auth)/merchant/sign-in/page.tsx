@@ -1,5 +1,6 @@
-import { MerchantMagicLinkForm } from "@/components/auth/merchant-magic-link-form";
+import { redirect } from "next/navigation";
 
+/** @deprecated Use `/sign-in` — kept for invite email links. */
 export default function Page() {
-  return <MerchantMagicLinkForm />;
+  redirect("/sign-in");
 }
