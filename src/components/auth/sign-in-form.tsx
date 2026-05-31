@@ -92,7 +92,7 @@ export function SignInForm() {
   return (
     <AuthSplitLayout
       fitViewport
-      heroAlt="Warehouse workspace"
+      heroAlt="Warehouse aisle with pallet racks and shipping boxes"
       heroImage={AUTH_HERO_IMAGES.signIn}
     >
       <AuthHeader

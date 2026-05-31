@@ -189,6 +189,10 @@ model LogiqAccount {
   carrierScorecards CarrierScorecard[]
   logiqQueries    LogIQQuery[]
   stockForecasts  StockForecast[]
+  platformSupportAccessRequests PlatformSupportAccessRequest[]
+  platformSupportSessions       PlatformSupportSession[]
+  platformSupportAuditLogs      PlatformSupportAuditLog[]
+  auditEvents                   AuditEvent[]
 
   @@map("logiq_account")
 }
@@ -201,15 +205,135 @@ model AccountUser {
   email            String
   firstName        String?
   lastName         String?
+  isActive         Boolean    @default(true)
+  deactivatedAt    DateTime?
   createdAt        DateTime   @default(now())
   updatedAt        DateTime   @updatedAt
 
   account              LogiqAccount               @relation(fields: [accountId], references: [id], onDelete: Cascade)
   warehouseAssignments WarehouseStaffAssignment[]
   managedWarehouses    WarehouseManager[]
+  approvedSupportAccessRequests PlatformSupportAccessRequest[] @relation("SupportAccessApprover")
 
   @@index([accountId])
   @@map("account_user")
+}
+
+// --- Platform admin support (L1 read-only, L2 escalated actions, L3 emergency impersonation) ---
+
+enum PlatformSupportLevel {
+  READ_ONLY
+  EMERGENCY_IMPERSONATION
+}
+
+enum PlatformSupportAccessRequestStatus {
+  PENDING
+  APPROVED
+  DENIED
+  EXPIRED
+  CONSUMED
+}
+
+enum PlatformSupportEscalatedAction {
+  UNLOCK_STUCK_SHIPMENT
+  REQUEUE_WEBHOOK
+  REGENERATE_LABEL
+  RETRY_SYNC
+}
+
+model PlatformSupportAccessRequest {
+  id                       String                             @id @default(cuid())
+  accountId                String
+  requestedByUserId        String
+  reason                   String                             @db.Text
+  status                   PlatformSupportAccessRequestStatus @default(PENDING)
+  approvalTokenHash        String                             @unique
+  requestExpiresAt         DateTime
+  approvedAt               DateTime?
+  approvedByAccountUserId  String?
+  deniedAt                 DateTime?
+  impersonationExpiresAt DateTime?
+  consumedAt               DateTime?
+  createdAt                DateTime                           @default(now())
+  updatedAt                DateTime                           @updatedAt
+
+  account     LogiqAccount              @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  approvedBy  AccountUser?              @relation("SupportAccessApprover", fields: [approvedByAccountUserId], references: [id], onDelete: SetNull)
+  sessions    PlatformSupportSession[]
+
+  @@index([accountId, status])
+  @@index([requestedByUserId, status])
+  @@map("platform_support_access_request")
+}
+
+model PlatformSupportSession {
+  id                  String               @id @default(cuid())
+  accountId           String
+  platformAdminUserId String
+  level               PlatformSupportLevel
+  reason              String               @db.Text
+  expiresAt           DateTime
+  endedAt             DateTime?
+  accessRequestId     String?
+  createdAt           DateTime             @default(now())
+
+  account       LogiqAccount                  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  accessRequest PlatformSupportAccessRequest? @relation(fields: [accessRequestId], references: [id], onDelete: SetNull)
+
+  @@index([platformAdminUserId, endedAt])
+  @@index([accountId])
+  @@map("platform_support_session")
+}
+
+model PlatformSupportAuditLog {
+  id                  String   @id @default(cuid())
+  platformAdminUserId String
+  accountId           String?
+  action              String
+  reason              String?  @db.Text
+  ipAddress           String?
+  metadata            Json?
+  createdAt           DateTime @default(now())
+
+  account LogiqAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, createdAt])
+  @@index([platformAdminUserId, createdAt])
+  @@map("platform_support_audit_log")
+}
+
+enum AuditEventSource {
+  TRPC
+  SUPPORT
+  AUTH
+  SYSTEM
+}
+
+model AuditEvent {
+  id            String            @id @default(cuid())
+  actorUserId   String?
+  actorEmail    String?
+  actorName     String?
+  systemRole    SystemRole?
+  accountId     String?
+  merchantId    String?
+  action        String
+  source        AuditEventSource  @default(TRPC)
+  procedurePath String?
+  reason        String?           @db.Text
+  ipAddress     String?
+  metadata      Json?
+  createdAt     DateTime          @default(now())
+
+  account  LogiqAccount? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+  merchant Merchant?     @relation(fields: [merchantId], references: [id], onDelete: SetNull)
+
+  @@index([createdAt])
+  @@index([systemRole, createdAt])
+  @@index([accountId, createdAt])
+  @@index([actorUserId, createdAt])
+  @@index([action])
+  @@map("audit_event")
 }
 
 model WarehouseStaffAssignment {
@@ -346,6 +470,7 @@ model Merchant {
   integrations Integration[]
   routingRules RoutingRule[]
   logiqInsights LogIQInsight[]
+  auditEvents   AuditEvent[]
 
   @@index([accountId])
   @@map("merchant")
@@ -361,6 +486,8 @@ model MerchantUser {
   email            String
   firstName        String?
   lastName         String?
+  isActive         Boolean              @default(true)
+  deactivatedAt    DateTime?
   invitedBy        String
   createdAt        DateTime             @default(now())
   updatedAt        DateTime             @updatedAt

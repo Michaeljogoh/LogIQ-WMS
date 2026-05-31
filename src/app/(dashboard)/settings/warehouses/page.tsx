@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useTRPC } from "@/app/trpc/client";
 import { OperatorPageHeader } from "@/components/dashboard/operator-page-header";
 import { CreateWarehouseDialog } from "@/components/settings/create-warehouse-dialog";
+import { useOperatorRole } from "@/hooks/use-operator-role";
 import { Badge } from "@/components/ui/badge";
 import {
   Card,
@@ -15,17 +16,24 @@ import {
 
 export default function Page() {
   const trpc = useTRPC();
+  const { canCreateWarehouse } = useOperatorRole();
   const warehousesQuery = useQuery(trpc.warehouse.list.queryOptions());
 
   return (
     <div className="space-y-6 p-6">
       <OperatorPageHeader
-        description="Fulfillment sites for inventory, orders, and team assignments."
+        description={
+          canCreateWarehouse
+            ? "Fulfillment sites for inventory, orders, and team assignments."
+            : "Fulfillment sites for inventory and orders."
+        }
         title="Warehouses"
         actions={
-          <CreateWarehouseDialog
-            onSuccess={() => void warehousesQuery.refetch()}
-          />
+          canCreateWarehouse ? (
+            <CreateWarehouseDialog
+              onSuccess={() => void warehousesQuery.refetch()}
+            />
+          ) : undefined
         }
       />
 
@@ -39,7 +47,8 @@ export default function Page() {
         </p>
       ) : null}
 
-      {!warehousesQuery.isLoading &&
+      {canCreateWarehouse &&
+      !warehousesQuery.isLoading &&
       (warehousesQuery.data?.length ?? 0) === 0 ? (
         <Card>
           <CardHeader>
@@ -55,6 +64,13 @@ export default function Page() {
             />
           </CardContent>
         </Card>
+      ) : null}
+      {!canCreateWarehouse &&
+      !warehousesQuery.isLoading &&
+      (warehousesQuery.data?.length ?? 0) === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No warehouses are configured for this account yet.
+        </p>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

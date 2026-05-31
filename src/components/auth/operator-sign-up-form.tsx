@@ -97,7 +97,7 @@ export function OperatorSignUpForm() {
   return (
     <AuthSplitLayout
       fitViewport
-      heroAlt="Sign up"
+      heroAlt="Warehouse aisle with pallet racks and shipping boxes"
       heroImage={AUTH_HERO_IMAGES.signUp}
     >
       <AuthHeader

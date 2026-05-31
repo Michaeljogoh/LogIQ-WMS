@@ -30,10 +30,11 @@ import type {
   SidebarNavContext,
 } from "@/config/dashboard-sidebar-config";
 import { authClient } from "@/lib/auth-client";
+import { isMerchantPortalRole } from "@/lib/dashboard-sidebar";
 import {
   canManageOperatorBilling,
-  isMerchantPortalRole,
-} from "@/lib/dashboard-sidebar";
+  canManageOperatorTeam,
+} from "@/lib/operator-permissions";
 
 function userInitials(name: string): string {
   const parts = name.trim().split(/\s+/).filter(Boolean);
@@ -76,7 +77,10 @@ export function NavUser({
   const initials = userInitials(user.name);
 
   const isPortal = navContext === "portal" || isMerchantPortalRole(systemRole);
-  const showOperatorBilling = canManageOperatorBilling(systemRole);
+  const showOperatorBilling =
+    canManageOperatorBilling(systemRole) &&
+    systemRole !== "PLATFORM_ADMIN";
+  const showPlatformHome = systemRole === "PLATFORM_ADMIN";
   const showMerchantBilling =
     isPortal &&
     (systemRole === "MERCHANT_OWNER" ||
@@ -87,9 +91,7 @@ export function NavUser({
     (systemRole === "MERCHANT_OWNER" ||
       systemRole === "PLATFORM_ADMIN" ||
       merchantHasPermission(merchantPermissions, "WRITE"));
-  const showOperatorTeam =
-    !isPortal &&
-    (systemRole === "THREEPL_ACCOUNT_OWNER" || systemRole === "PLATFORM_ADMIN");
+  const showOperatorTeam = !isPortal && canManageOperatorTeam(systemRole);
 
   const signOutRedirect = "/sign-in";
 
@@ -136,6 +138,19 @@ export function NavUser({
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            {showPlatformHome ? (
+              <>
+                <DropdownMenuGroup>
+                  <DropdownMenuItem asChild>
+                    <Link href="/platform/dashboard">
+                      <RocketIcon />
+                      Platform console
+                    </Link>
+                  </DropdownMenuItem>
+                </DropdownMenuGroup>
+                <DropdownMenuSeparator />
+              </>
+            ) : null}
             {showOperatorBilling ? (
               <>
                 <DropdownMenuGroup>

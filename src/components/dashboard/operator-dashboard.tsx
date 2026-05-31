@@ -13,6 +13,7 @@ import {
 import Link from "next/link";
 import { useTRPC } from "@/app/trpc/client";
 import { OperatorPageHeader } from "@/components/dashboard/operator-page-header";
+import { useOperatorRole } from "@/hooks/use-operator-role";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,6 +64,15 @@ function SetupStep(
 
 export function OperatorDashboard() {
   const trpc = useTRPC();
+  const {
+    isAccountOwner,
+    canManageTeam,
+    canCreateWarehouse,
+    canCreateMerchant,
+    canAccessOnboarding,
+    canManageBilling,
+    canAssignWarehouseStaff,
+  } = useOperatorRole();
 
   const operationsQuery = useQuery(
     trpc.analytics.operationsDashboard.queryOptions(),
@@ -71,7 +81,10 @@ export function OperatorDashboard() {
     trpc.analytics.inventoryHealth.queryOptions(),
   );
   const warehousesQuery = useQuery(trpc.warehouse.list.queryOptions());
-  const teamQuery = useQuery(trpc.accountUser.list.queryOptions());
+  const teamQuery = useQuery({
+    ...trpc.accountUser.list.queryOptions(),
+    enabled: canManageTeam,
+  });
   const merchantsQuery = useQuery(trpc.merchant.list.queryOptions());
 
   const warehouseCount = warehousesQuery.data?.length ?? 0;
@@ -84,17 +97,25 @@ export function OperatorDashboard() {
   const inventory = inventoryQuery.data;
 
   const setupComplete =
-    warehouseCount > 0 && teamCount > 0 && merchantCount > 0;
+    warehouseCount > 0 &&
+    (!canManageTeam || teamCount > 0) &&
+    (!canCreateMerchant || merchantCount > 0);
 
   return (
     <div className="space-y-8 p-6">
       <OperatorPageHeader
-        description="Operations overview for your 3PL workspace."
+        description={
+          isAccountOwner
+            ? "Operations overview for your 3PL workspace."
+            : "Operations overview for your assigned warehouses."
+        }
         title="Dashboard"
         actions={
-          <Button asChild variant="outline">
-            <Link href="/onboarding">Setup wizard</Link>
-          </Button>
+          canAccessOnboarding ? (
+            <Button asChild variant="outline">
+              <Link href="/onboarding">Setup wizard</Link>
+            </Button>
+          ) : undefined
         }
       />
 
@@ -149,45 +170,57 @@ export function OperatorDashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Workspace setup</CardTitle>
-            <CardDescription>
-              Complete these steps to run end-to-end flows as a 3PL account
-              owner.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {setupComplete ? (
-              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
-                <CheckCircle2Icon className="size-4 shrink-0" />
-                Core setup complete — explore modules below.
-              </div>
-            ) : null}
-            <SetupStep
-              actionLabel="Add warehouse"
-              description="At least one site for inventory and fulfillment."
-              done={warehouseCount > 0}
-              href="/settings/warehouses"
-              title={`Warehouses (${warehouseCount})`}
-            />
-            <SetupStep
-              actionLabel="Invite team"
-              description="Warehouse managers and staff with role assignments."
-              done={teamCount > 0}
-              href="/settings/users"
-              title={`Team members (${teamCount})`}
-            />
-            <SetupStep
-              actionLabel="Add merchant"
-              description="Client brand with owner invite to the merchant portal."
-              done={merchantCount > 0}
-              href="/merchants"
-              title={`Merchants (${merchantCount})`}
-            />
-          </CardContent>
-        </Card>
+      <div
+        className={
+          isAccountOwner ? "grid gap-6 lg:grid-cols-2" : "grid gap-6"
+        }
+      >
+        {isAccountOwner ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Workspace setup</CardTitle>
+              <CardDescription>
+                Complete these steps to run end-to-end flows as a 3PL account
+                owner.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {setupComplete ? (
+                <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
+                  <CheckCircle2Icon className="size-4 shrink-0" />
+                  Core setup complete — explore modules below.
+                </div>
+              ) : null}
+              {canCreateWarehouse ? (
+                <SetupStep
+                  actionLabel="Add warehouse"
+                  description="At least one site for inventory and fulfillment."
+                  done={warehouseCount > 0}
+                  href="/settings/warehouses"
+                  title={`Warehouses (${warehouseCount})`}
+                />
+              ) : null}
+              {canManageTeam ? (
+                <SetupStep
+                  actionLabel="Invite team"
+                  description="Warehouse managers and staff with role assignments."
+                  done={teamCount > 0}
+                  href="/settings/users"
+                  title={`Team members (${teamCount})`}
+                />
+              ) : null}
+              {canCreateMerchant ? (
+                <SetupStep
+                  actionLabel="Add merchant"
+                  description="Client brand with owner invite to the merchant portal."
+                  done={merchantCount > 0}
+                  href="/merchants"
+                  title={`Merchants (${merchantCount})`}
+                />
+              ) : null}
+            </CardContent>
+          </Card>
+        ) : null}
 
         <Card>
           <CardHeader>
@@ -216,7 +249,9 @@ export function OperatorDashboard() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Settings & admin</CardTitle>
+          <CardTitle className="text-base">
+            {isAccountOwner ? "Settings & admin" : "Shortcuts"}
+          </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline">
@@ -225,12 +260,14 @@ export function OperatorDashboard() {
               Warehouses
             </Link>
           </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/settings/users">
-              <UsersIcon className="mr-1.5 size-4" />
-              Users
-            </Link>
-          </Button>
+          {canManageTeam ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href="/settings/users">
+                <UsersIcon className="mr-1.5 size-4" />
+                Users
+              </Link>
+            </Button>
+          ) : null}
           <Button asChild size="sm" variant="outline">
             <Link href="/merchants">
               <Building2Icon className="mr-1.5 size-4" />
@@ -243,10 +280,20 @@ export function OperatorDashboard() {
               Orders
             </Link>
           </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/settings/billing">Billing</Link>
-          </Button>
-          {warehouseCount === 0 ? (
+          {canManageBilling ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href="/settings/billing">Billing</Link>
+            </Button>
+          ) : null}
+          {canAssignWarehouseStaff && !canManageTeam ? (
+            <Button asChild size="sm" variant="outline">
+              <Link href="/settings/staff">
+                <UsersIcon className="mr-1.5 size-4" />
+                Staff assignments
+              </Link>
+            </Button>
+          ) : null}
+          {isAccountOwner && warehouseCount === 0 ? (
             <Badge variant="secondary">Add a warehouse to unlock flows</Badge>
           ) : null}
         </CardContent>

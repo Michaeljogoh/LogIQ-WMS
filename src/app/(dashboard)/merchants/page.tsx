@@ -5,21 +5,29 @@ import Link from "next/link";
 import { useTRPC } from "@/app/trpc/client";
 import { OperatorPageHeader } from "@/components/dashboard/operator-page-header";
 import { CreateMerchantDialog } from "@/components/merchants/create-merchant-dialog";
+import { useOperatorRole } from "@/hooks/use-operator-role";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export default function Page() {
   const trpc = useTRPC();
+  const { canCreateMerchant } = useOperatorRole();
   const merchantsQuery = useQuery(trpc.merchant.listWithMetrics.queryOptions());
 
   return (
     <div className="space-y-6 p-6">
       <OperatorPageHeader
-        description="Client brands you fulfill for. Each merchant gets an owner invite to the portal."
+        description={
+          canCreateMerchant
+            ? "Client brands you fulfill for. Each merchant gets an owner invite to the portal."
+            : "Client brands you fulfill for."
+        }
         title="Merchants"
         actions={
-          <CreateMerchantDialog
-            onSuccess={() => void merchantsQuery.refetch()}
-          />
+          canCreateMerchant ? (
+            <CreateMerchantDialog
+              onSuccess={() => void merchantsQuery.refetch()}
+            />
+          ) : undefined
         }
       />
 
@@ -33,7 +41,9 @@ export default function Page() {
         </p>
       ) : null}
 
-      {!merchantsQuery.isLoading && (merchantsQuery.data?.length ?? 0) === 0 ? (
+      {canCreateMerchant &&
+      !merchantsQuery.isLoading &&
+      (merchantsQuery.data?.length ?? 0) === 0 ? (
         <Card>
           <CardHeader>
             <CardTitle className="text-base">No merchants yet</CardTitle>
@@ -48,6 +58,13 @@ export default function Page() {
             />
           </CardContent>
         </Card>
+      ) : null}
+      {!canCreateMerchant &&
+      !merchantsQuery.isLoading &&
+      (merchantsQuery.data?.length ?? 0) === 0 ? (
+        <p className="text-sm text-muted-foreground">
+          No merchants are configured for this account yet.
+        </p>
       ) : null}
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

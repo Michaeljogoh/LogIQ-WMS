@@ -168,7 +168,10 @@ const warehouseManagerSections: SidebarNavSectionConfig[] = [
         title: "Labels",
         url: "/labels/templates",
         icon: TagIcon,
-        items: [{ title: "Templates", url: "/labels/templates" }],
+        items: [
+          { title: "Templates", url: "/labels/templates" },
+          { title: "New template", url: "/labels/templates/new" },
+        ],
       },
     ],
   },
@@ -196,6 +199,10 @@ const warehouseManagerSections: SidebarNavSectionConfig[] = [
           { title: "Overview", url: "/inbound" },
           { title: "Suppliers", url: "/inbound/suppliers" },
           { title: "Purchase orders", url: "/inbound/purchase-orders" },
+          {
+            title: "New purchase order",
+            url: "/inbound/purchase-orders/new",
+          },
           { title: "New work order", url: "/inbound/work-orders/new" },
         ],
       },
@@ -214,6 +221,7 @@ const warehouseManagerSections: SidebarNavSectionConfig[] = [
         icon: Settings2Icon,
         items: [
           { title: "Warehouses", url: "/settings/warehouses" },
+          { title: "Staff assignments", url: "/settings/staff" },
           { title: "Routing", url: "/settings/routing" },
           { title: "Packaging", url: "/settings/packaging" },
           { title: "Printers", url: "/settings/printers" },

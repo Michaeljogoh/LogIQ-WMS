@@ -3,7 +3,13 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { resolveTwoFactorGuard } from "@/server/helpers/two-factor-guard";
 
-const GUARDED_PREFIXES = ["/dashboard", "/portal", "/settings", "/onboarding"];
+const GUARDED_PREFIXES = [
+  "/dashboard",
+  "/portal",
+  "/platform",
+  "/settings",
+  "/onboarding",
+];
 
 type SessionUserWith2Fa = {
   twoFactorEnabled?: boolean;

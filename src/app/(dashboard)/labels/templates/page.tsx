@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { useState } from "react";
 import { useTRPC } from "@/app/trpc/client";
+import { useOperatorRole } from "@/hooks/use-operator-role";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,6 +38,7 @@ type LabelTemplateRow = {
 
 export default function LabelTemplatesPage() {
   const trpc = useTRPC();
+  const { canManageLabelTemplates } = useOperatorRole();
   const [filterType, setFilterType] = useState<LabelFilterType>("ALL");
 
   const listInput: { type?: (typeof LABEL_TYPES)[number] } =
@@ -59,9 +61,11 @@ export default function LabelTemplatesPage() {
             product labels when SKUs are created.
           </p>
         </div>
-        <Button asChild className="min-h-11 min-w-[44px]">
-          <Link href="/labels/templates/new">New template</Link>
-        </Button>
+        {canManageLabelTemplates ? (
+          <Button asChild className="min-h-11 min-w-[44px]">
+            <Link href="/labels/templates/new">New template</Link>
+          </Button>
+        ) : null}
       </div>
 
       <div className="flex flex-wrap items-center gap-3">

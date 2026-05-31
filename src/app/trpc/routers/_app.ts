@@ -30,6 +30,9 @@ import { stockLevelRouter } from "@/server/api/routers/stock-level";
 import { supplierRouter } from "@/server/api/routers/supplier";
 import { transferRouter } from "@/server/api/routers/transfer";
 import { warehouseRouter } from "@/server/api/routers/warehouse";
+import { platformRouter } from "@/server/api/routers/platform";
+import { platformAuditRouter } from "@/server/api/routers/platform-audit";
+import { platformSupportRouter } from "@/server/api/routers/platform-support";
 import { warehouseStaffRouter } from "@/server/api/routers/warehouse-staff";
 import { workOrderRouter } from "@/server/api/routers/work-order";
 import {
@@ -51,6 +54,9 @@ export const appRouter = createTRPCRouter({
   notification: notificationsRouter,
   warehouse: warehouseRouter,
   warehouseStaff: warehouseStaffRouter,
+  platform: platformRouter,
+  platformSupport: platformSupportRouter,
+  platformAudit: platformAuditRouter,
   product: productRouter,
   stockLevel: stockLevelRouter,
   cycleCount: cycleCountRouter,

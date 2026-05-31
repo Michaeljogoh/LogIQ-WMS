@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
+import { PlatformSupportBanner } from "@/components/platform/platform-support-banner";
 import { NotificationBell } from "@/components/shared/notification-bell";
 import {
   Breadcrumb,
@@ -17,6 +18,7 @@ import {
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { ensureOperatorWorkspaceForUser } from "@/server/helpers/ensure-operator-workspace";
+import { getPlatformActiveAccount } from "@/server/helpers/platform-session";
 import { buildSessionTenantFields } from "@/server/helpers/session-enrichment";
 
 export default async function DashboardLayout({
@@ -64,14 +66,27 @@ export default async function DashboardLayout({
     redirect("/portal/dashboard");
   }
 
-  const account = user.accountId
+  const platformActiveAccount =
+    user.systemRole === "PLATFORM_ADMIN"
+      ? await getPlatformActiveAccount()
+      : null;
+
+  if (user.systemRole === "PLATFORM_ADMIN" && !platformActiveAccount) {
+    redirect("/platform/dashboard");
+  }
+
+  const tenantAccountId =
+    platformActiveAccount?.id ?? user.accountId ?? undefined;
+
+  const account = tenantAccountId
     ? await db.logiqAccount.findUnique({
-        where: { id: user.accountId },
+        where: { id: tenantAccountId },
         select: { name: true, plan: true },
       })
     : null;
 
-  const workspaceName = account?.name ?? "LogIQ WMS";
+  const workspaceName =
+    platformActiveAccount?.name ?? account?.name ?? "LogIQ WMS";
   const workspacePlan = account?.plan ?? "STARTER";
 
   return (
@@ -88,6 +103,14 @@ export default async function DashboardLayout({
         navContext="operator"
       />
       <SidebarInset>
+        {platformActiveAccount ? (
+          <PlatformSupportBanner
+            accountName={platformActiveAccount.name}
+            expiresAt={platformActiveAccount.expiresAt}
+            reason={platformActiveAccount.reason}
+            supportLevel={platformActiveAccount.supportLevel}
+          />
+        ) : null}
         <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
           <SidebarTrigger className="-ml-1" />
           <Separator
