@@ -14,6 +14,10 @@ import {
 } from "@/emails/operator-team-invite";
 import { ResetPasswordEmail } from "@/emails/reset-password-email";
 import { TwoFactorOtpEmail } from "@/emails/two-factor-otp";
+import {
+  PlatformSupportAccessRequestEmail,
+  type PlatformSupportAccessRequestEmailProps,
+} from "@/emails/platform-support-access-request";
 import { VerificationEmail } from "@/emails/verification-email";
 
 const postmarkServerToken = process.env.POSTMARK_SERVER_TOKEN;
@@ -147,6 +151,20 @@ export async function sendResetPasswordEmail(params: {
   await sendHtmlEmail({
     to: params.to,
     subject: "Reset your LogIQ WMS password",
+    html,
+  });
+}
+
+export async function sendPlatformSupportAccessRequestEmail(
+  params: PlatformSupportAccessRequestEmailProps & { to: string },
+): Promise<void> {
+  const { to, ...emailProps } = params;
+  const html = await render(
+    <PlatformSupportAccessRequestEmail {...emailProps} />,
+  );
+  await sendHtmlEmail({
+    to,
+    subject: `Emergency support access requested — ${params.accountName}`,
     html,
   });
 }

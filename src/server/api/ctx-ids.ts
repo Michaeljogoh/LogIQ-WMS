@@ -1,13 +1,25 @@
 import { TRPCError } from "@trpc/server";
+import { resolveTenantAccountId } from "@/server/helpers/resolve-tenant-account";
 
-export function requireLinkedTenant(ctx: {
+type LinkedTenantCtx = {
   userId: string | null;
   accountId: string | null;
-}): { userId: string; accountId: string } {
-  if (!ctx.userId || !ctx.accountId) {
+  systemRole: string | null;
+  activeAccountId: string | null;
+};
+
+export function requireLinkedTenant(ctx: LinkedTenantCtx): {
+  userId: string;
+  accountId: string;
+} {
+  const userId = ctx.userId;
+  if (!userId) {
     throw new TRPCError({ code: "UNAUTHORIZED" });
   }
-  return { userId: ctx.userId, accountId: ctx.accountId };
+
+  const accountId = resolveTenantAccountId(ctx);
+
+  return { userId, accountId };
 }
 
 export function requireUserId(ctx: { userId: string | null }): string {

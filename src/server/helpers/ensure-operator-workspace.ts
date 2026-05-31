@@ -46,6 +46,17 @@ export async function ensureOperatorWorkspaceForUser(
     return existing;
   }
 
+  const existingOperator = await db.accountUser.findUnique({
+    where: { betterAuthUserId },
+    select: { id: true, isActive: true, systemRole: true },
+  });
+  if (existingOperator) {
+    if (!existingOperator.isActive && existingOperator.systemRole !== "PLATFORM_ADMIN") {
+      return null;
+    }
+    return buildSessionTenantFields(betterAuthUserId);
+  }
+
   const user = await db.user.findUnique({
     where: { id: betterAuthUserId },
     select: { id: true, email: true, name: true },

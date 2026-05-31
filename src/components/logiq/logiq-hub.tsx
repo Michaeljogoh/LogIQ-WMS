@@ -12,6 +12,7 @@ import {
   YAxis,
 } from "recharts";
 import { useTRPC } from "@/app/trpc/client";
+import { useOperatorRole } from "@/hooks/use-operator-role";
 import { CapacityForecastChart } from "@/components/logiq/capacity-forecast-chart";
 import { CarrierScorecardTable } from "@/components/logiq/carrier-scorecard-table";
 import { InsightFeed } from "@/components/logiq/insight-feed";
@@ -45,12 +46,7 @@ export function LogiqHub() {
   const [q, setQ] = useState("");
   const [warehouseId, setWarehouseId] = useState<string>("");
 
-  const sessionQuery = useQuery(trpc.session.queryOptions());
-  const role = sessionQuery.data?.user
-    ? (sessionQuery.data.user as { systemRole?: string }).systemRole
-    : undefined;
-  const canRunJobs =
-    role === "THREEPL_ACCOUNT_OWNER" || role === "PLATFORM_ADMIN";
+  const { isAccountOwner: canRunJobs } = useOperatorRole();
 
   const warehousesQuery = useQuery(trpc.warehouse.list.queryOptions());
   const insightsQuery = useQuery(trpc.logiq.getInsights.queryOptions({}));

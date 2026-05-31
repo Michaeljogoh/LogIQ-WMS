@@ -7,6 +7,7 @@ import {
   type SidebarNavContext,
   type SidebarNavSectionConfig,
 } from "@/config/dashboard-sidebar-config";
+import { getHomeHrefForRole } from "@/lib/auth-redirect";
 
 export function mapSidebarSectionsToNav(
   sections: SidebarNavSectionConfig[],
@@ -42,13 +43,13 @@ export function getDashboardNavSections(
 }
 
 export function getDashboardHomeHref(
-  _systemRole: string | null | undefined,
+  systemRole: string | null | undefined,
   context: SidebarNavContext = "operator",
 ): string {
   if (context === "portal") {
     return "/portal/dashboard";
   }
-  return "/dashboard";
+  return getHomeHrefForRole(systemRole);
 }
 
 export function isMerchantPortalRole(
@@ -57,10 +58,4 @@ export function isMerchantPortalRole(
   return systemRole === "MERCHANT_OWNER" || systemRole === "MERCHANT_USER";
 }
 
-export function canManageOperatorBilling(
-  systemRole: string | null | undefined,
-): boolean {
-  return (
-    systemRole === "THREEPL_ACCOUNT_OWNER" || systemRole === "PLATFORM_ADMIN"
-  );
-}
+export { canManageOperatorBilling } from "@/lib/operator-permissions";

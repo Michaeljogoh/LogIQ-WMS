@@ -75,6 +75,10 @@ export async function buildSessionTenantFields(
   });
 
   if (operator) {
+    if (!operator.isActive && operator.systemRole !== "PLATFORM_ADMIN") {
+      return null;
+    }
+
     const managedWarehouseIds = operator.managedWarehouses.map(
       (m) => m.warehouseId,
     );
@@ -104,6 +108,9 @@ export async function buildSessionTenantFields(
   }
 
   if (merchantUser) {
+    if (!merchantUser.isActive) {
+      return null;
+    }
     return merchantUserToTenantFields(merchantUser);
   }
 

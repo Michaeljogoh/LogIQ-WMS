@@ -35,6 +35,11 @@ export default async function PortalLayout({
     redirect("/sign-in");
   }
 
+  const sessionRole = (session.user as { systemRole?: string }).systemRole;
+  if (sessionRole === "PLATFORM_ADMIN") {
+    redirect("/platform/dashboard");
+  }
+
   const sessionUser = session.user as {
     id: string;
     name?: string | null;

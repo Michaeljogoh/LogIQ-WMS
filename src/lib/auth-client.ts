@@ -35,4 +35,12 @@ export type SessionUser = NonNullable<
   accountId?: string | null;
   systemRole?: string | null;
   merchantId?: string | null;
+  managedWarehouseIds?: string[] | string;
+  /** JSON string from custom session, or parsed array on the client */
+  warehouseAssignments?:
+    | string
+    | {
+        warehouseId: string;
+        permissions: ("PICK" | "PACK" | "RECEIVE")[];
+      }[];
 };

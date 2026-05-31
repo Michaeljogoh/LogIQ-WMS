@@ -255,6 +255,10 @@ export function formatSystemRoleLabel(role: SystemRole): string {
       return "Warehouse Staff";
     case "PLATFORM_ADMIN":
       return "Platform Admin";
+    case "MERCHANT_OWNER":
+      return "Merchant Owner";
+    case "MERCHANT_USER":
+      return "Merchant User";
     default:
       return role;
   }
