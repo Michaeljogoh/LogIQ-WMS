@@ -1,15 +1,13 @@
 import { TRPCError } from "@trpc/server";
 import { startOfMonth } from "date-fns";
 import { z } from "zod";
-import {
-  authedProc,
-  createTRPCRouter,
-  requireRole,
-} from "@/app/trpc/init";
+import { authedProc, createTRPCRouter, requireRole } from "@/app/trpc/init";
 import type { Plan } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
+import { revokeBetterAuthSessions } from "@/lib/revoke-sessions";
 import { limitsForPlan } from "@/server/billing/plan-limits";
 import { getPolarAccessToken } from "@/server/billing/polar-config";
+import { getOrSetCache } from "@/server/cache/analytics-cache";
 import { tenantAccountListWhere } from "@/server/helpers/resolve-tenant-account";
 import { formatSystemRoleLabel } from "@/server/helpers/team-invite";
 import {
@@ -17,9 +15,45 @@ import {
   setMerchantUserActiveState,
   setOperatorActiveState,
 } from "@/server/helpers/user-access";
-import { revokeBetterAuthSessions } from "@/lib/revoke-sessions";
 
 const platformAdminOnly = requireRole("PLATFORM_ADMIN");
+const DAY_MS = 24 * 60 * 60 * 1000;
+const PLATFORM_TREND_DAYS = 14;
+
+function startOfUtcDay(date: Date) {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
+}
+
+function endOfUtcDay(date: Date) {
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
+}
+
+function toIsoDay(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function daysBetween(from: Date, to: Date) {
+  const list: Date[] = [];
+  let cursor = startOfUtcDay(from).getTime();
+  const end = endOfUtcDay(to).getTime();
+  while (cursor <= end) {
+    list.push(new Date(cursor));
+    cursor += DAY_MS;
+  }
+  return list;
+}
 
 export const platformRouter = createTRPCRouter({
   overview: authedProc.use(platformAdminOnly).query(async () => {
@@ -45,6 +79,82 @@ export const platformRouter = createTRPCRouter({
       merchantCount,
       orderCount,
     };
+  }),
+
+  dashboardCharts: authedProc.use(platformAdminOnly).query(async () => {
+    const where = tenantAccountListWhere();
+    return getOrSetCache({
+      key: "platform:dashboard-charts",
+      ttlSeconds: 300,
+      compute: async () => {
+        const now = new Date();
+        const rangeStart = new Date(
+          now.getTime() - (PLATFORM_TREND_DAYS - 1) * DAY_MS,
+        );
+        const startDay = startOfUtcDay(rangeStart);
+        const endDay = endOfUtcDay(now);
+
+        const [ordersInRange, accounts, allOrdersByAccount] =
+          await db.$transaction([
+            db.order.findMany({
+              where: {
+                account: where,
+                createdAt: { gte: startDay, lte: endDay },
+              },
+              select: { createdAt: true, accountId: true },
+            }),
+            db.logiqAccount.findMany({
+              where,
+              select: { id: true, name: true, plan: true },
+            }),
+            db.order.findMany({
+              where: { account: where },
+              select: { accountId: true },
+            }),
+          ]);
+
+        const dayKeys = daysBetween(startDay, now).map(toIsoDay);
+        const trendMap = new Map(
+          dayKeys.map((date) => [date, { date, orders: 0 }]),
+        );
+        for (const order of ordersInRange) {
+          const day = toIsoDay(order.createdAt);
+          const row = trendMap.get(day);
+          if (row) row.orders += 1;
+        }
+
+        const planMap = new Map<string, number>();
+        for (const account of accounts) {
+          planMap.set(account.plan, (planMap.get(account.plan) ?? 0) + 1);
+        }
+
+        const accountNameById = new Map(accounts.map((a) => [a.id, a.name]));
+
+        const tenantOrderCounts = new Map<string, number>();
+        for (const order of allOrdersByAccount) {
+          tenantOrderCounts.set(
+            order.accountId,
+            (tenantOrderCounts.get(order.accountId) ?? 0) + 1,
+          );
+        }
+
+        return {
+          periodDays: PLATFORM_TREND_DAYS,
+          orderTrend: [...trendMap.values()],
+          planMix: [...planMap.entries()].map(([plan, value]) => ({
+            name: plan.charAt(0) + plan.slice(1).toLowerCase(),
+            value,
+          })),
+          topTenants: [...tenantOrderCounts.entries()]
+            .map(([accountId, value]) => ({
+              name: accountNameById.get(accountId) ?? "Unknown",
+              value,
+            }))
+            .sort((a, b) => b.value - a.value)
+            .slice(0, 8),
+        };
+      },
+    });
   }),
 
   accountsPageStats: authedProc.use(platformAdminOnly).query(async () => {
@@ -377,7 +487,9 @@ export const platformRouter = createTRPCRouter({
                   ? {
                       OR: [
                         { email: { contains: search, mode: "insensitive" } },
-                        { firstName: { contains: search, mode: "insensitive" } },
+                        {
+                          firstName: { contains: search, mode: "insensitive" },
+                        },
                         { lastName: { contains: search, mode: "insensitive" } },
                       ],
                     }
@@ -414,7 +526,9 @@ export const platformRouter = createTRPCRouter({
                   ? {
                       OR: [
                         { email: { contains: search, mode: "insensitive" } },
-                        { firstName: { contains: search, mode: "insensitive" } },
+                        {
+                          firstName: { contains: search, mode: "insensitive" },
+                        },
                         { lastName: { contains: search, mode: "insensitive" } },
                       ],
                     }

@@ -9,14 +9,14 @@ import { z } from "zod";
 import { useTRPC } from "@/app/trpc/client";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -53,20 +53,20 @@ export function CreateMerchantDialog(
   );
 
   return (
-    <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger asChild>
+    <Sheet onOpenChange={setOpen} open={open}>
+      <SheetTrigger asChild>
         <Button>Add merchant</Button>
-      </DialogTrigger>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add merchant</DialogTitle>
-          <DialogDescription>
+      </SheetTrigger>
+      <SheetContent className="overflow-y-auto sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Add merchant</SheetTitle>
+          <SheetDescription>
             Creates the merchant account and invites the owner with a temporary
             password. They sign in at the shared login page.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         <form
-          className="space-y-4"
+          className="space-y-4 px-4"
           onSubmit={form.handleSubmit((values) =>
             createMutation.mutate(values),
           )}
@@ -98,7 +98,7 @@ export function CreateMerchantDialog(
               </p>
             ) : null}
           </div>
-          <DialogFooter>
+          <SheetFooter className="flex-row justify-end gap-2 px-0">
             <Button
               onClick={() => setOpen(false)}
               type="button"
@@ -109,9 +109,9 @@ export function CreateMerchantDialog(
             <Button disabled={createMutation.isPending} type="submit">
               Create & invite
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -6,6 +6,12 @@ import {
   SmartphoneIcon,
   UsersIcon,
 } from "lucide-react";
+import {
+  LandingReveal,
+  LandingStagger,
+  LandingStaggerItem,
+} from "@/components/landing/landing-reveal";
+import { landingScaleIn } from "@/components/landing/landing-motion";
 
 const BENEFITS = [
   {
@@ -44,16 +50,22 @@ export function LandingBenefits() {
   return (
     <section className="px-5 py-20 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-14 text-center">
+        <LandingReveal className="mb-14 text-center">
           <h2 className="landing-display text-balance text-[clamp(1.75rem,3.5vw,2.5rem)] font-semibold leading-[1.12] tracking-[-0.03em] text-[var(--landing-ink)]">
             Built for operators who run the floor and the business
           </h2>
-        </div>
+        </LandingReveal>
 
-        <ul className="grid gap-px overflow-hidden rounded-xl border border-[var(--landing-border)] bg-[var(--landing-border)] sm:grid-cols-2 lg:grid-cols-3">
+        <LandingStagger
+          as="ul"
+          className="grid gap-px overflow-hidden rounded-xl border border-[var(--landing-border)] bg-[var(--landing-border)] sm:grid-cols-2 lg:grid-cols-3"
+          stagger={0.05}
+        >
           {BENEFITS.map((item) => (
-            <li
+            <LandingStaggerItem
               key={item.title}
+              as="li"
+              variants={landingScaleIn}
               className="bg-[var(--landing-surface)] p-6 sm:p-7"
             >
               <item.icon
@@ -66,9 +78,9 @@ export function LandingBenefits() {
               <p className="text-sm leading-relaxed text-[var(--landing-ink-muted)]">
                 {item.body}
               </p>
-            </li>
+            </LandingStaggerItem>
           ))}
-        </ul>
+        </LandingStagger>
       </div>
     </section>
   );

@@ -2,18 +2,23 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
-  ArrowRightIcon,
-  Building2Icon,
   CheckCircle2Icon,
   CircleIcon,
-  PackageSearchIcon,
-  UsersIcon,
+  ClockIcon,
+  PackageIcon,
+  TrendingUpIcon,
   WarehouseIcon,
 } from "lucide-react";
 import Link from "next/link";
 import { useTRPC } from "@/app/trpc/client";
+import { ChartCard } from "@/components/charts/chart-card";
+import { DashboardBarChart } from "@/components/charts/dashboard-bar-chart";
+import { DashboardLineChart } from "@/components/charts/dashboard-line-chart";
+import { DashboardPieChart } from "@/components/charts/dashboard-pie-chart";
+import { KpiStatCard } from "@/components/charts/kpi-stat-card";
+import { DashboardFeatureGrid } from "@/components/dashboard/dashboard-feature-grid";
+import { getOperatorDashboardLinks } from "@/components/dashboard/operator-dashboard-links";
 import { OperatorPageHeader } from "@/components/dashboard/operator-page-header";
-import { useOperatorRole } from "@/hooks/use-operator-role";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,15 +28,15 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-
-const QUICK_LINKS = [
-  { title: "Orders", href: "/orders", description: "Fulfillment queue" },
-  { title: "Inventory", href: "/inventory", description: "Stock & movements" },
-  { title: "Inbound", href: "/inbound", description: "POs & receiving" },
-  { title: "Merchants", href: "/merchants", description: "Client accounts" },
-  { title: "Analytics", href: "/analytics", description: "Ops reporting" },
-  { title: "LogIQ", href: "/logiq", description: "AI assistant" },
-] as const;
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { useOperatorRole } from "@/hooks/use-operator-role";
 
 function SetupStep(
   props: Readonly<{
@@ -71,6 +76,8 @@ export function OperatorDashboard() {
     canCreateMerchant,
     canAccessOnboarding,
     canManageBilling,
+    canManageLabelTemplates,
+    canManageEscalationRules,
     canAssignWarehouseStaff,
   } = useOperatorRole();
 
@@ -80,6 +87,7 @@ export function OperatorDashboard() {
   const inventoryQuery = useQuery(
     trpc.analytics.inventoryHealth.queryOptions(),
   );
+  const chartsQuery = useQuery(trpc.dashboard.operatorCharts.queryOptions());
   const warehousesQuery = useQuery(trpc.warehouse.list.queryOptions());
   const teamQuery = useQuery({
     ...trpc.accountUser.list.queryOptions(),
@@ -95,87 +103,170 @@ export function OperatorDashboard() {
 
   const ops = operationsQuery.data;
   const inventory = inventoryQuery.data;
+  const charts = chartsQuery.data;
 
   const setupComplete =
     warehouseCount > 0 &&
     (!canManageTeam || teamCount > 0) &&
     (!canCreateMerchant || merchantCount > 0);
 
+  const featureLinks = getOperatorDashboardLinks({
+    canManageBilling,
+    canManageTeam,
+    canManageLabelTemplates,
+    canManageEscalationRules,
+    isAccountOwner,
+  });
+
+  const trendEmpty =
+    !chartsQuery.isLoading &&
+    (charts?.orderTrend.every((d) => d.created === 0 && d.fulfilled === 0) ??
+      true);
+
   return (
     <div className="space-y-8 p-6">
       <OperatorPageHeader
         description={
           isAccountOwner
-            ? "Operations overview for your 3PL workspace."
-            : "Operations overview for your assigned warehouses."
+            ? "Operations overview for your 3PL workspace — last 14 days."
+            : "Operations overview for your assigned warehouses — last 14 days."
         }
         title="Dashboard"
         actions={
-          canAccessOnboarding ? (
-            <Button asChild variant="outline">
-              <Link href="/onboarding">Setup wizard</Link>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/analytics">Full analytics</Link>
             </Button>
-          ) : undefined
+            {canAccessOnboarding ? (
+              <Button asChild size="sm" variant="outline">
+                <Link href="/onboarding">Setup wizard</Link>
+              </Button>
+            ) : null}
+          </div>
         }
       />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiStatCard
+          accent="primary"
+          hint={`${ops?.pendingOrders ?? 0} pending fulfillment`}
+          icon={PackageIcon}
+          isLoading={operationsQuery.isLoading}
+          label="Orders today"
+          value={ops?.ordersToday ?? 0}
+        />
+        <KpiStatCard
+          accent="success"
+          hint={`SLA (7d): ${ops?.slaCompliancePct7d ?? 100}%`}
+          icon={TrendingUpIcon}
+          isLoading={operationsQuery.isLoading}
+          label="Fulfillment rate"
+          value={`${ops?.fulfillmentRatePct ?? 0}%`}
+        />
+        <KpiStatCard
+          hint="Completed pick lists (7d avg)"
+          icon={ClockIcon}
+          isLoading={operationsQuery.isLoading}
+          label="Avg pick time"
+          value={`${ops?.avgPickTimeMins ?? 0}m`}
+        />
+        <KpiStatCard
+          accent="warning"
+          hint={`${inventory?.deadStockCount ?? 0} dead-stock SKUs`}
+          icon={WarehouseIcon}
+          isLoading={inventoryQuery.isLoading}
+          label="Low-stock SKUs"
+          value={inventory?.lowStockCount ?? 0}
+        />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <ChartCard
+          className="lg:col-span-2"
+          description="Orders created vs fulfilled per day"
+          isEmpty={trendEmpty}
+          isLoading={chartsQuery.isLoading}
+          title="Order throughput"
+        >
+          <DashboardLineChart
+            data={charts?.orderTrend ?? []}
+            series={[
+              { dataKey: "created", name: "Created", color: "#3874ff" },
+              { dataKey: "fulfilled", name: "Fulfilled", color: "#25b003" },
+            ]}
+            xKey="date"
+          />
+        </ChartCard>
+
+        <ChartCard
+          description="Share of orders in each fulfillment state"
+          isEmpty={!charts?.statusMix.length}
+          isLoading={chartsQuery.isLoading}
+          title="Fulfillment mix"
+        >
+          <DashboardPieChart data={charts?.statusMix ?? []} />
+        </ChartCard>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartCard
+          description="Order volume by warehouse site"
+          isEmpty={!charts?.byWarehouse.length}
+          isLoading={chartsQuery.isLoading}
+          title="Orders by warehouse"
+        >
+          <DashboardBarChart data={charts?.byWarehouse ?? []} />
+        </ChartCard>
+
         <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Orders today</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">
-              {operationsQuery.isLoading ? "—" : (ops?.ordersToday ?? 0)}
+          <CardHeader>
+            <CardTitle className="text-base">
+              Top merchants (open orders)
             </CardTitle>
+            <CardDescription>
+              Brands with the largest active backlog
+            </CardDescription>
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            {ops?.pendingOrders ?? 0} pending fulfillment
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Fulfillment rate (today)</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">
-              {operationsQuery.isLoading
-                ? "—"
-                : `${ops?.fulfillmentRatePct ?? 0}%`}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            SLA (7d): {ops?.slaCompliancePct7d ?? 100}%
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Avg pick time (7d)</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">
-              {operationsQuery.isLoading
-                ? "—"
-                : `${ops?.avgPickTimeMins ?? 0}m`}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Based on completed pick lists
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Inventory health</CardDescription>
-            <CardTitle className="text-3xl tabular-nums">
-              {inventoryQuery.isLoading ? "—" : (inventory?.lowStockCount ?? 0)}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
-            Low-stock SKUs · {inventory?.deadStockCount ?? 0} dead stock
+          <CardContent>
+            {chartsQuery.isLoading ? (
+              <p className="text-sm text-muted-foreground">Loading…</p>
+            ) : charts?.topMerchants.length ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Merchant</TableHead>
+                    <TableHead className="text-right">Open</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {charts.topMerchants.map((row) => (
+                    <TableRow key={row.name}>
+                      <TableCell className="font-medium">{row.name}</TableCell>
+                      <TableCell className="text-right tabular-nums">
+                        {row.openOrders}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                No open orders across merchants.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
 
-      <div
-        className={
-          isAccountOwner ? "grid gap-6 lg:grid-cols-2" : "grid gap-6"
-        }
-      >
-        {isAccountOwner ? (
+      <DashboardFeatureGrid
+        columns={4}
+        description="Jump into every module — fulfillment, inventory, merchants, and settings."
+        links={featureLinks}
+        title="Workspace modules"
+      />
+
+      {isAccountOwner ? (
+        <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Workspace setup</CardTitle>
@@ -188,7 +279,7 @@ export function OperatorDashboard() {
               {setupComplete ? (
                 <div className="flex items-center gap-2 rounded-lg bg-emerald-50 px-3 py-2 text-sm text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-200">
                   <CheckCircle2Icon className="size-4 shrink-0" />
-                  Core setup complete — explore modules below.
+                  Core setup complete — explore modules above.
                 </div>
               ) : null}
               {canCreateWarehouse ? (
@@ -220,84 +311,63 @@ export function OperatorDashboard() {
               ) : null}
             </CardContent>
           </Card>
-        ) : null}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Quick links</CardTitle>
-            <CardDescription>Jump to main operator modules.</CardDescription>
-          </CardHeader>
-          <CardContent className="grid gap-2 sm:grid-cols-2">
-            {QUICK_LINKS.map((link) => (
-              <Link
-                className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5 text-sm transition-colors hover:bg-muted/50"
-                href={link.href}
-                key={link.href}
-              >
-                <span>
-                  <span className="font-medium">{link.title}</span>
-                  <span className="mt-0.5 block text-xs text-muted-foreground">
-                    {link.description}
-                  </span>
-                </span>
-                <ArrowRightIcon className="size-4 shrink-0 text-muted-foreground" />
-              </Link>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Inventory snapshot</CardTitle>
+              <CardDescription>
+                Live health metrics from your catalog
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid gap-3 sm:grid-cols-2">
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">Active SKUs</p>
+                <p className="text-2xl font-semibold tabular-nums">
+                  {inventoryQuery.isLoading ? "—" : (inventory?.totalSkus ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">Units on hand</p>
+                <p className="text-2xl font-semibold tabular-nums">
+                  {inventoryQuery.isLoading
+                    ? "—"
+                    : (inventory?.totalUnits ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">
+                  Top movers (30d)
+                </p>
+                <p className="text-2xl font-semibold tabular-nums">
+                  {inventoryQuery.isLoading
+                    ? "—"
+                    : (inventory?.top10Movers?.length ?? 0)}
+                </p>
+              </div>
+              <div className="rounded-lg border p-3">
+                <p className="text-xs text-muted-foreground">Dead stock</p>
+                <p className="text-2xl font-semibold tabular-nums">
+                  {inventoryQuery.isLoading
+                    ? "—"
+                    : (inventory?.deadStockCount ?? 0)}
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">
-            {isAccountOwner ? "Settings & admin" : "Shortcuts"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
+      {!isAccountOwner && warehouseCount === 0 ? (
+        <Badge variant="secondary">Add a warehouse to unlock full flows</Badge>
+      ) : null}
+
+      {canAssignWarehouseStaff && !canManageTeam ? (
+        <div className="flex flex-wrap gap-2">
           <Button asChild size="sm" variant="outline">
-            <Link href="/settings/warehouses">
-              <WarehouseIcon className="mr-1.5 size-4" />
-              Warehouses
-            </Link>
+            <Link href="/settings/staff">Staff assignments</Link>
           </Button>
-          {canManageTeam ? (
-            <Button asChild size="sm" variant="outline">
-              <Link href="/settings/users">
-                <UsersIcon className="mr-1.5 size-4" />
-                Users
-              </Link>
-            </Button>
-          ) : null}
-          <Button asChild size="sm" variant="outline">
-            <Link href="/merchants">
-              <Building2Icon className="mr-1.5 size-4" />
-              Merchants
-            </Link>
-          </Button>
-          <Button asChild size="sm" variant="outline">
-            <Link href="/orders">
-              <PackageSearchIcon className="mr-1.5 size-4" />
-              Orders
-            </Link>
-          </Button>
-          {canManageBilling ? (
-            <Button asChild size="sm" variant="outline">
-              <Link href="/settings/billing">Billing</Link>
-            </Button>
-          ) : null}
-          {canAssignWarehouseStaff && !canManageTeam ? (
-            <Button asChild size="sm" variant="outline">
-              <Link href="/settings/staff">
-                <UsersIcon className="mr-1.5 size-4" />
-                Staff assignments
-              </Link>
-            </Button>
-          ) : null}
-          {isAccountOwner && warehouseCount === 0 ? (
-            <Badge variant="secondary">Add a warehouse to unlock flows</Badge>
-          ) : null}
-        </CardContent>
-      </Card>
+        </div>
+      ) : null}
     </div>
   );
 }

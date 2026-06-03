@@ -14,7 +14,7 @@ import "./landing-tokens.css";
 
 export function LandingPage() {
   return (
-    <div className="landing min-h-svh">
+    <div className="landing min-h-svh font-sans">
       <LandingNav />
       <main>
         <LandingHero />

@@ -9,14 +9,14 @@ import { z } from "zod";
 import { useTRPC } from "@/app/trpc/client";
 import { Button } from "@/components/ui/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 
@@ -62,20 +62,20 @@ export function CreateWarehouseDialog(
   );
 
   return (
-    <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger asChild>
+    <Sheet onOpenChange={setOpen} open={open}>
+      <SheetTrigger asChild>
         <Button>Add warehouse</Button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Add warehouse</DialogTitle>
-          <DialogDescription>
+      </SheetTrigger>
+      <SheetContent className="overflow-y-auto sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle>Add warehouse</SheetTitle>
+          <SheetDescription>
             Create a fulfillment site for inventory, orders, and team
             assignments.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         <form
-          className="space-y-4"
+          className="space-y-4 px-4"
           onSubmit={form.handleSubmit((values) =>
             createMutation.mutate(values),
           )}
@@ -130,7 +130,7 @@ export function CreateWarehouseDialog(
               <Input id="wh-zip" {...form.register("zip")} />
             </div>
           </div>
-          <DialogFooter>
+          <SheetFooter className="flex-row justify-end gap-2 px-0">
             <Button
               onClick={() => setOpen(false)}
               type="button"
@@ -141,9 +141,9 @@ export function CreateWarehouseDialog(
             <Button disabled={createMutation.isPending} type="submit">
               Create warehouse
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

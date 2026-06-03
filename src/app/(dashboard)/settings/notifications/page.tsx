@@ -3,11 +3,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useTRPC } from "@/app/trpc/client";
-import { useOperatorRole } from "@/hooks/use-operator-role";
 import { SlackConnectButton } from "@/components/shared/slack-connect-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import { useOperatorRole } from "@/hooks/use-operator-role";
 
 const severities = ["INFO", "WARNING", "CRITICAL"] as const;
 

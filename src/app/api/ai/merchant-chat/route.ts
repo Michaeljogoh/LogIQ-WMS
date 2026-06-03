@@ -1,7 +1,8 @@
+import { streamText } from "ai";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { DEFAULT_CLAUDE_MODEL, getAnthropic } from "@/server/ai/client";
+import { getGeminiModel } from "@/server/ai/client";
 import { buildMerchantChatContext } from "@/server/ai/merchant-chat-context";
 
 export const maxDuration = 60;
@@ -32,8 +33,8 @@ export async function POST(req: Request) {
     return new Response("Merchant session required", { status: 403 });
   }
 
-  const anthropic = getAnthropic();
-  if (!anthropic) {
+  const model = getGeminiModel();
+  if (!model) {
     return new Response("AI not configured", { status: 503 });
   }
 
@@ -65,14 +66,11 @@ Do not invent numbers. Keep answers short and actionable.
 CONTEXT:
 ${context}`;
 
-  const stream = anthropic.messages.stream({
-    model: DEFAULT_CLAUDE_MODEL,
-    max_tokens: 4096,
+  const result = streamText({
+    model,
     system,
-    messages: messages.map((m) => ({
-      role: m.role,
-      content: m.content,
-    })),
+    messages: messages.map((m) => ({ role: m.role, content: m.content })),
+    maxOutputTokens: 4096,
   });
 
   return new Response(
@@ -80,13 +78,8 @@ ${context}`;
       async start(controller) {
         const enc = new TextEncoder();
         try {
-          for await (const event of stream) {
-            if (
-              event.type === "content_block_delta" &&
-              event.delta.type === "text_delta"
-            ) {
-              controller.enqueue(enc.encode(event.delta.text));
-            }
+          for await (const text of result.textStream) {
+            controller.enqueue(enc.encode(text));
           }
           controller.close();
         } catch (e) {

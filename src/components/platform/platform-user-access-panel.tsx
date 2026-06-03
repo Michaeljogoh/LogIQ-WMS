@@ -16,13 +16,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -466,15 +466,15 @@ function EditOperatorDialog({
   }
 
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Configure operator</DialogTitle>
-          <DialogDescription>
+    <Sheet onOpenChange={onOpenChange} open={open}>
+      <SheetContent className="overflow-y-auto sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Configure operator</SheetTitle>
+          <SheetDescription>
             {operator.email} · {operator.accountName}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
+          </SheetDescription>
+        </SheetHeader>
+        <div className="space-y-4 px-4">
           <div className="space-y-2">
             <Label>Role</Label>
             <Select
@@ -526,7 +526,7 @@ function EditOperatorDialog({
             />
           </div>
         </div>
-        <DialogFooter>
+        <SheetFooter>
           <Button
             disabled={pending || !firstName.trim()}
             onClick={() =>
@@ -540,9 +540,9 @@ function EditOperatorDialog({
           >
             {pending ? "Saving…" : "Save changes"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }
 
@@ -580,15 +580,15 @@ function EditMerchantDialog({
   }
 
   return (
-    <Dialog onOpenChange={onOpenChange} open={open}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Configure merchant user</DialogTitle>
-          <DialogDescription>
+    <Sheet onOpenChange={onOpenChange} open={open}>
+      <SheetContent className="overflow-y-auto sm:max-w-md">
+        <SheetHeader>
+          <SheetTitle>Configure merchant user</SheetTitle>
+          <SheetDescription>
             {merchant.email} · {merchant.merchantName}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4">
+          </SheetDescription>
+        </SheetHeader>
+        <div className="space-y-4 px-4">
           <div className="space-y-2">
             <Label>Portal role</Label>
             <Select
@@ -607,7 +607,7 @@ function EditMerchantDialog({
             </Select>
           </div>
         </div>
-        <DialogFooter>
+        <SheetFooter>
           <Button
             disabled={pending}
             onClick={() => onSave(role)}
@@ -615,8 +615,8 @@ function EditMerchantDialog({
           >
             {pending ? "Saving…" : "Save changes"}
           </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        </SheetFooter>
+      </SheetContent>
+    </Sheet>
   );
 }

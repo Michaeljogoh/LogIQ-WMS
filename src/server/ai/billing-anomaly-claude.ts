@@ -1,4 +1,5 @@
-import { DEFAULT_CLAUDE_MODEL, getAnthropic } from "@/server/ai/client";
+import { generateText } from "ai";
+import { getGeminiModel } from "@/server/ai/client";
 import { parseJsonObject } from "@/server/ai/parse-json-block";
 
 export type ClaudeBillingFlag = {
@@ -21,7 +22,8 @@ type InvoiceLineDraft = {
 };
 
 /**
- * Optional second-pass anomaly scan using Claude (invoice lines must include ids).
+ * Optional second-pass anomaly scan using Gemini (invoice lines must include ids).
+ * Kept as `billing-anomaly-claude` to avoid renaming call sites.
  */
 export async function enrichInvoiceAnomaliesWithClaude(args: {
   invoiceNumber: string;
@@ -31,8 +33,8 @@ export async function enrichInvoiceAnomaliesWithClaude(args: {
   lines: InvoiceLineDraft[];
   sourceContext: Record<string, unknown>;
 }): Promise<ClaudeBillingFlag[]> {
-  const client = getAnthropic();
-  if (!client) {
+  const model = getGeminiModel();
+  if (!model) {
     return [];
   }
 
@@ -57,16 +59,13 @@ ${JSON.stringify(
 )}`;
 
   try {
-    const completion = await client.messages.create({
-      model: DEFAULT_CLAUDE_MODEL,
-      max_tokens: 2048,
+    const { text } = await generateText({
+      model,
       messages: [{ role: "user", content: prompt }],
+      maxOutputTokens: 2048,
     });
-    const block = completion.content.find((b) => b.type === "text");
-    if (!block || block.type !== "text") {
-      return [];
-    }
-    const parsed = parseJsonObject<{ flags: ClaudeBillingFlag[] }>(block.text);
+
+    const parsed = parseJsonObject<{ flags: ClaudeBillingFlag[] }>(text);
     return (parsed.flags ?? []).map((f) => ({
       ...f,
       source: "claude" as const,

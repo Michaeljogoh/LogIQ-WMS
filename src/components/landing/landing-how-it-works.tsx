@@ -1,3 +1,10 @@
+import {
+  LandingReveal,
+  LandingStagger,
+  LandingStaggerItem,
+} from "@/components/landing/landing-reveal";
+import { landingFadeUp } from "@/components/landing/landing-motion";
+
 const STEPS = [
   {
     step: "1",
@@ -23,7 +30,7 @@ export function LandingHowItWorks() {
   return (
     <section className="border-t border-[var(--landing-border)] bg-[var(--landing-surface)] px-5 py-20 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-6xl">
-        <div className="mb-14 max-w-xl">
+        <LandingReveal className="mb-14 max-w-xl">
           <h2 className="landing-display text-balance text-[clamp(1.75rem,3.5vw,2.5rem)] font-semibold leading-[1.12] tracking-[-0.03em] text-[var(--landing-ink)]">
             Live in hours, not quarters
           </h2>
@@ -31,11 +38,11 @@ export function LandingHowItWorks() {
             No six-month implementation. LogIQ WMS is built for operators who
             need to ship this week.
           </p>
-        </div>
+        </LandingReveal>
 
-        <ol className="grid gap-8 md:grid-cols-3">
+        <LandingStagger as="ol" className="grid gap-8 md:grid-cols-3">
           {STEPS.map((item, index) => (
-            <li key={item.step} className="relative">
+            <LandingStaggerItem key={item.step} as="li" variants={landingFadeUp} className="relative">
               {index < STEPS.length - 1 ? (
                 <span
                   aria-hidden
@@ -51,9 +58,9 @@ export function LandingHowItWorks() {
               <p className="text-sm leading-relaxed text-[var(--landing-ink-muted)]">
                 {item.description}
               </p>
-            </li>
+            </LandingStaggerItem>
           ))}
-        </ol>
+        </LandingStagger>
       </div>
     </section>
   );

@@ -1,4 +1,13 @@
 import { BotIcon, MessageSquareIcon, SparklesIcon, TrendingUpIcon } from "lucide-react";
+import {
+  LandingReveal,
+  LandingStagger,
+  LandingStaggerItem,
+} from "@/components/landing/landing-reveal";
+import {
+  landingScaleIn,
+  landingSlideFromRight,
+} from "@/components/landing/landing-motion";
 
 const CAPABILITIES = [
   {
@@ -41,6 +50,7 @@ export function LandingLogiq() {
     >
       <div className="mx-auto max-w-6xl">
         <div className="grid gap-12 lg:grid-cols-[1fr_1.1fr] lg:gap-16">
+          <LandingReveal>
           <div>
             <div className="mb-5 inline-flex items-center gap-2 rounded-lg bg-[var(--landing-accent-muted)] px-3 py-1.5">
               <BotIcon className="size-4 text-[var(--landing-accent)]" aria-hidden />
@@ -59,9 +69,9 @@ export function LandingLogiq() {
               what matters before your team goes looking for it.
             </p>
 
-            <ul className="mt-8 space-y-5">
+            <LandingStagger as="ul" className="mt-8 space-y-5" stagger={0.06}>
               {FEATURES.map((feature) => (
-                <li key={feature.title} className="flex gap-4">
+                <LandingStaggerItem key={feature.title} as="li" className="flex gap-4">
                   <span className="mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-lg bg-[var(--landing-surface)]">
                     <feature.icon
                       className="size-4 text-[var(--landing-accent)]"
@@ -76,19 +86,23 @@ export function LandingLogiq() {
                       {feature.body}
                     </p>
                   </div>
-                </li>
+                </LandingStaggerItem>
               ))}
-            </ul>
+            </LandingStagger>
           </div>
+          </LandingReveal>
 
+          <LandingReveal delay={0.1} variants={landingSlideFromRight}>
           <div className="rounded-xl border border-[var(--landing-border)] bg-[var(--landing-surface)] p-5 sm:p-6">
             <p className="mb-4 text-xs font-medium text-[var(--landing-ink-subtle)]">
               Example queries
             </p>
-            <ul className="space-y-3">
+            <LandingStagger as="ul" className="space-y-3" stagger={0.05}>
               {CAPABILITIES.map((item) => (
-                <li
+                <LandingStaggerItem
                   key={item.question}
+                  as="li"
+                  variants={landingScaleIn}
                   className="rounded-lg border border-[var(--landing-border)] bg-[var(--landing-bg)] p-4"
                 >
                   <p className="mb-2 text-[10px] font-medium uppercase tracking-wide text-[var(--landing-accent)]">
@@ -97,11 +111,12 @@ export function LandingLogiq() {
                   <p className="text-sm leading-relaxed text-[var(--landing-ink)]">
                     &ldquo;{item.question}&rdquo;
                   </p>
-                </li>
+                </LandingStaggerItem>
               ))}
-            </ul>
+            </LandingStagger>
 
-            <div className="mt-5 rounded-lg bg-[var(--landing-accent-muted)] p-4">
+            <LandingReveal delay={0.2} className="mt-5">
+            <div className="rounded-lg bg-[var(--landing-accent-muted)] p-4">
               <p className="text-xs font-medium text-[var(--landing-ink-subtle)]">
                 LogIQ response
               </p>
@@ -112,7 +127,9 @@ export function LandingLogiq() {
                 #112 before 2pm cutoff.
               </p>
             </div>
+            </LandingReveal>
           </div>
+          </LandingReveal>
         </div>
       </div>
     </section>
