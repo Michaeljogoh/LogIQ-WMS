@@ -1,27 +1,60 @@
 "use client";
 
 import { useQuery } from "@tanstack/react-query";
+import {
+  ArrowRightIcon,
+  BuildingIcon,
+  FileTextIcon,
+  PackageIcon,
+  TrendingUpIcon,
+} from "lucide-react";
 import Link from "next/link";
 import { useTRPC } from "@/app/trpc/client";
-import { OperatorPageHeader } from "@/components/dashboard/operator-page-header";
 import { CreateMerchantDialog } from "@/components/merchants/create-merchant-dialog";
+import { EmptyState } from "@/components/shared/empty-state";
+import { PageHeader } from "@/components/shared/page-header";
+import { StatusBadge } from "@/components/shared/status-badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useOperatorRole } from "@/hooks/use-operator-role";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { cn } from "@/lib/utils";
+
+function MerchantCardSkeleton() {
+  return (
+    <div className="rounded-xl border bg-card p-5 shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3">
+          <Skeleton className="size-9 rounded-lg" />
+          <div className="space-y-1.5">
+            <Skeleton className="h-4 w-32" />
+            <Skeleton className="h-3 w-24" />
+          </div>
+        </div>
+      </div>
+      <div className="mt-4 grid grid-cols-3 gap-3">
+        <Skeleton className="h-12 rounded-lg" />
+        <Skeleton className="h-12 rounded-lg" />
+        <Skeleton className="h-12 rounded-lg" />
+      </div>
+    </div>
+  );
+}
 
 export default function Page() {
   const trpc = useTRPC();
   const { canCreateMerchant } = useOperatorRole();
   const merchantsQuery = useQuery(trpc.merchant.listWithMetrics.queryOptions());
 
+  const merchants = merchantsQuery.data ?? [];
+
   return (
-    <div className="space-y-6 p-6">
-      <OperatorPageHeader
+    <div className="flex flex-1 flex-col gap-6 p-6">
+      <PageHeader
+        title="Merchants"
         description={
           canCreateMerchant
-            ? "Client brands you fulfill for. Each merchant gets an owner invite to the portal."
+            ? "Client brands you fulfill for. Each merchant gets portal access."
             : "Client brands you fulfill for."
         }
-        title="Merchants"
         actions={
           canCreateMerchant ? (
             <CreateMerchantDialog
@@ -32,81 +65,132 @@ export default function Page() {
       />
 
       {merchantsQuery.isLoading ? (
-        <p className="text-sm text-muted-foreground">Loading merchants…</p>
-      ) : null}
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {["a", "b", "c"].map((k) => (
+            <MerchantCardSkeleton key={k} />
+          ))}
+        </div>
+      ) : merchants.length === 0 ? (
+        <EmptyState
+          icon={BuildingIcon}
+          title="No merchants yet"
+          description={
+            canCreateMerchant
+              ? "Add a merchant to set up orders, contracts, and portal access for their team."
+              : "No merchants are configured for this account yet."
+          }
+          action={
+            canCreateMerchant ? (
+              <CreateMerchantDialog
+                onSuccess={() => void merchantsQuery.refetch()}
+              />
+            ) : undefined
+          }
+        />
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+          {merchants.map((merchant) => {
+            const slaGood = merchant.slaScore >= 95;
+            const slaWarn = merchant.slaScore >= 80 && merchant.slaScore < 95;
+            const invoiceStatus = merchant.latestInvoice?.status;
+            return (
+              <div
+                key={merchant.id}
+                className="group rounded-xl border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
+              >
+                {/* Header */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                      <BuildingIcon className="size-4 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold leading-tight text-foreground">
+                        {merchant.name}
+                      </p>
+                      <p className="truncate text-xs text-muted-foreground">
+                        {merchant.email}
+                      </p>
+                    </div>
+                  </div>
+                  {invoiceStatus ? (
+                    <StatusBadge status={invoiceStatus} className="shrink-0" />
+                  ) : null}
+                </div>
 
-      {merchantsQuery.isError ? (
-        <p className="text-sm text-destructive">
-          {merchantsQuery.error.message}
-        </p>
-      ) : null}
+                {/* Stats */}
+                <div className="mt-4 grid grid-cols-3 gap-3">
+                  <div className="rounded-lg bg-muted/50 p-2.5">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <PackageIcon className="size-3.5" />
+                      <span className="text-[10px] font-medium uppercase tracking-wide">
+                        Orders
+                      </span>
+                    </div>
+                    <p className="mt-1 text-lg font-semibold text-foreground">
+                      {merchant.orderCount}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-2.5">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <TrendingUpIcon className="size-3.5" />
+                      <span className="text-[10px] font-medium uppercase tracking-wide">
+                        SLA
+                      </span>
+                    </div>
+                    <p
+                      className={cn(
+                        "mt-1 text-lg font-semibold",
+                        slaGood
+                          ? "text-success"
+                          : slaWarn
+                            ? "text-warning"
+                            : "text-destructive",
+                      )}
+                    >
+                      {merchant.slaScore}%
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-muted/50 p-2.5">
+                    <div className="flex items-center gap-1.5 text-muted-foreground">
+                      <FileTextIcon className="size-3.5" />
+                      <span className="text-[10px] font-medium uppercase tracking-wide">
+                        Invoice
+                      </span>
+                    </div>
+                    <p className="mt-1 truncate text-sm font-medium text-foreground">
+                      {merchant.latestInvoice?.invoiceNumber ?? "—"}
+                    </p>
+                  </div>
+                </div>
 
-      {canCreateMerchant &&
-      !merchantsQuery.isLoading &&
-      (merchantsQuery.data?.length ?? 0) === 0 ? (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">No merchants yet</CardTitle>
-            <p className="text-sm text-muted-foreground">
-              Add a merchant to create orders, contracts, and portal access for
-              their team.
-            </p>
-          </CardHeader>
-          <CardContent>
-            <CreateMerchantDialog
-              onSuccess={() => void merchantsQuery.refetch()}
-            />
-          </CardContent>
-        </Card>
-      ) : null}
-      {!canCreateMerchant &&
-      !merchantsQuery.isLoading &&
-      (merchantsQuery.data?.length ?? 0) === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No merchants are configured for this account yet.
-        </p>
-      ) : null}
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {merchantsQuery.data?.map((merchant) => (
-          <Card key={merchant.id}>
-            <CardHeader>
-              <CardTitle>{merchant.name}</CardTitle>
-              <p className="text-sm text-muted-foreground">{merchant.email}</p>
-            </CardHeader>
-            <CardContent className="space-y-2 text-sm">
-              <p>Orders: {merchant.orderCount}</p>
-              <p>
-                Inventory value: $
-                {(merchant.inventoryValueCents / 100).toFixed(2)}
-              </p>
-              <p>SLA score: {merchant.slaScore}%</p>
-              <p>
-                Last invoice:{" "}
-                {merchant.latestInvoice
-                  ? `${merchant.latestInvoice.invoiceNumber} (${merchant.latestInvoice.status})`
-                  : "N/A"}
-              </p>
-              <div className="flex gap-3 pt-2">
-                <Link
-                  className="text-primary hover:underline"
-                  href={`/merchants/${merchant.id}/contract`}
-                >
-                  Contract
-                </Link>
-                {merchant.latestInvoice ? (
+                {/* Actions */}
+                <div className="mt-4 flex items-center gap-2 border-t pt-3">
                   <Link
-                    className="text-primary hover:underline"
-                    href={`/merchants/${merchant.id}/invoices/${merchant.latestInvoice.id}`}
+                    href={`/merchants/${merchant.id}/contract`}
+                    className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary"
                   >
-                    Invoice
+                    Contract
+                    <ArrowRightIcon className="size-3" />
                   </Link>
-                ) : null}
+                  {merchant.latestInvoice ? (
+                    <>
+                      <span className="text-border">·</span>
+                      <Link
+                        href={`/merchants/${merchant.id}/invoices/${merchant.latestInvoice.id}`}
+                        className="flex items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-primary"
+                      >
+                        Latest invoice
+                        <ArrowRightIcon className="size-3" />
+                      </Link>
+                    </>
+                  ) : null}
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

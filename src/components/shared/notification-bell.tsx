@@ -3,15 +3,16 @@
 import { useQuery } from "@tanstack/react-query";
 import { BellIcon } from "lucide-react";
 import { useTRPC } from "@/app/trpc/client";
-import { authClient } from "@/lib/auth-client";
 import { Button } from "@/components/ui/button";
+import { authClient } from "@/lib/auth-client";
 import { NotificationDrawer } from "./notification-drawer";
 
 export function NotificationBell() {
   const trpc = useTRPC();
   const session = authClient.useSession();
-  const accountId = (session.data?.user as { accountId?: string | null } | undefined)
-    ?.accountId;
+  const accountId = (
+    session.data?.user as { accountId?: string | null } | undefined
+  )?.accountId;
 
   const notifications = useQuery({
     ...trpc.notifications.list.queryOptions({ limit: 10 }),

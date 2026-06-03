@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMemo } from "react";
 import { useTRPC } from "@/app/trpc/client";
+import { PageHeader } from "@/components/shared/page-header";
 import { SlackConnectButton } from "@/components/shared/slack-connect-button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -50,7 +51,11 @@ export default function Page() {
   );
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="flex flex-1 flex-col gap-6 p-6">
+      <PageHeader
+        title="Notifications"
+        description="Configure how and when you receive alerts."
+      />
       <Card>
         <CardHeader>
           <CardTitle>Notification preferences</CardTitle>

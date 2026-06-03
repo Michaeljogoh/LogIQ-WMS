@@ -1,12 +1,8 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppSidebar } from "@/components/dashboard/app-sidebar";
-import {
-  Breadcrumb,
-  BreadcrumbItem,
-  BreadcrumbList,
-  BreadcrumbPage,
-} from "@/components/ui/breadcrumb";
+import { DashboardBreadcrumb } from "@/components/shared/dashboard-breadcrumb";
+import { ThemeToggle } from "@/components/shared/theme-toggle";
 import { Separator } from "@/components/ui/separator";
 import {
   SidebarInset,
@@ -98,21 +94,16 @@ export default async function PortalLayout({
         navContext="portal"
       />
       <SidebarInset>
-        <header className="flex h-16 shrink-0 items-center gap-2 border-b px-4 transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <SidebarTrigger className="-ml-1" />
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur-sm transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <SidebarTrigger className="-ml-1 size-8 text-muted-foreground hover:text-foreground" />
           <Separator
             orientation="vertical"
             className="mr-2 data-vertical:h-4 data-vertical:self-auto"
           />
-          <Breadcrumb>
-            <BreadcrumbList>
-              <BreadcrumbItem>
-                <BreadcrumbPage className="text-muted-foreground">
-                  Merchant portal
-                </BreadcrumbPage>
-              </BreadcrumbItem>
-            </BreadcrumbList>
-          </Breadcrumb>
+          <DashboardBreadcrumb />
+          <div className="ml-auto flex items-center gap-1">
+            <ThemeToggle />
+          </div>
         </header>
         <div className="flex flex-1 flex-col">{children}</div>
       </SidebarInset>
