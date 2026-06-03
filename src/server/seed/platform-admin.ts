@@ -22,9 +22,7 @@ export async function ensurePlatformAdminSeed(): Promise<void> {
 }
 
 async function runSeed(): Promise<void> {
-  const email = (
-    process.env.PLATFORM_ADMIN_EMAIL ?? "admin@logiq.internal"
-  )
+  const email = (process.env.PLATFORM_ADMIN_EMAIL ?? "admin@logiq.internal")
     .trim()
     .toLowerCase();
   const password = process.env.PLATFORM_ADMIN_PASSWORD;

@@ -1,8 +1,10 @@
 "use client";
 
 import { ChevronDownIcon } from "lucide-react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
-import { cn } from "@/lib/utils";
+import { LandingReveal } from "@/components/landing/landing-reveal";
+import { landingTransition, LANDING_DURATION } from "@/components/landing/landing-motion";
 
 const FAQ_ITEMS = [
   {
@@ -39,56 +41,74 @@ const FAQ_ITEMS = [
 
 export function LandingFaq() {
   const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const reduceMotion = useReducedMotion();
 
   return (
     <section id="faq" className="scroll-mt-24 px-5 py-20 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-3xl">
-        <h2 className="landing-display mb-10 text-center text-[clamp(1.75rem,3.5vw,2.5rem)] font-semibold leading-[1.12] tracking-[-0.03em] text-[var(--landing-ink)]">
-          Questions operators ask before switching
-        </h2>
+        <LandingReveal>
+          <h2 className="landing-display mb-10 text-center text-[clamp(1.75rem,3.5vw,2.5rem)] font-semibold leading-[1.12] tracking-[-0.03em] text-[var(--landing-ink)]">
+            Questions operators ask before switching
+          </h2>
+        </LandingReveal>
 
-        <div className="divide-y divide-[var(--landing-border)] rounded-xl border border-[var(--landing-border)] bg-[var(--landing-surface)]">
-          {FAQ_ITEMS.map((item, index) => {
-            const isOpen = openIndex === index;
-            const panelId = `faq-panel-${index}`;
-            const buttonId = `faq-button-${index}`;
+        <LandingReveal delay={0.08}>
+          <div className="divide-y divide-[var(--landing-border)] rounded-xl border border-[var(--landing-border)] bg-[var(--landing-surface)]">
+            {FAQ_ITEMS.map((item, index) => {
+              const isOpen = openIndex === index;
+              const panelId = `faq-panel-${index}`;
+              const buttonId = `faq-button-${index}`;
 
-            return (
-              <div key={item.question}>
-                <h3>
-                  <button
-                    id={buttonId}
-                    type="button"
-                    aria-expanded={isOpen}
-                    aria-controls={panelId}
-                    className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-medium text-[var(--landing-ink)] hover:bg-[var(--landing-bg)] sm:px-6 sm:py-5 sm:text-base"
-                    onClick={() => setOpenIndex(isOpen ? null : index)}
-                  >
-                    {item.question}
-                    <ChevronDownIcon
-                      className={cn(
-                        "size-5 shrink-0 text-[var(--landing-ink-subtle)] transition-transform duration-200",
-                        isOpen && "rotate-180",
-                      )}
-                      aria-hidden
-                    />
-                  </button>
-                </h3>
-                <div
-                  id={panelId}
-                  role="region"
-                  aria-labelledby={buttonId}
-                  hidden={!isOpen}
-                  className="px-5 pb-5 sm:px-6 sm:pb-6"
-                >
-                  <p className="text-sm leading-relaxed text-[var(--landing-ink-muted)] sm:text-[15px]">
-                    {item.answer}
-                  </p>
+              return (
+                <div key={item.question}>
+                  <h3>
+                    <button
+                      id={buttonId}
+                      type="button"
+                      aria-expanded={isOpen}
+                      aria-controls={panelId}
+                      className="flex w-full items-center justify-between gap-4 px-5 py-4 text-left text-sm font-medium text-[var(--landing-ink)] hover:bg-[var(--landing-bg)] sm:px-6 sm:py-5 sm:text-base"
+                      onClick={() => setOpenIndex(isOpen ? null : index)}
+                    >
+                      {item.question}
+                      <motion.span
+                        animate={{ rotate: isOpen ? 180 : 0 }}
+                        transition={landingTransition(LANDING_DURATION.fast)}
+                      >
+                        <ChevronDownIcon
+                          className="size-5 shrink-0 text-[var(--landing-ink-subtle)]"
+                          aria-hidden
+                        />
+                      </motion.span>
+                    </button>
+                  </h3>
+                  <AnimatePresence initial={false}>
+                    {isOpen ? (
+                      <motion.div
+                        id={panelId}
+                        role="region"
+                        aria-labelledby={buttonId}
+                        initial={
+                          reduceMotion
+                            ? false
+                            : { height: 0, opacity: 0 }
+                        }
+                        animate={{ height: "auto", opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={landingTransition(LANDING_DURATION.fast)}
+                        className="overflow-hidden"
+                      >
+                        <p className="px-5 pb-5 text-sm leading-relaxed text-[var(--landing-ink-muted)] sm:px-6 sm:pb-6 sm:text-[15px]">
+                          {item.answer}
+                        </p>
+                      </motion.div>
+                    ) : null}
+                  </AnimatePresence>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        </LandingReveal>
       </div>
     </section>
   );

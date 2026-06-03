@@ -1,17 +1,19 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import type { LanguageModel } from "ai";
 
-export const DEFAULT_CLAUDE_MODEL =
-  process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-5-20250929";
+export const DEFAULT_GEMINI_MODEL =
+  process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
 
-export function getAnthropic(): Anthropic | null {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+/**
+ * Returns a configured Gemini language model, or null if the API key is not set.
+ * Uses the Vercel AI SDK Google provider so query-engine and chat route share
+ * the same generateText / streamText interface.
+ */
+export function getGeminiModel(): LanguageModel | null {
+  const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   if (!apiKey) {
     return null;
   }
-  return new Anthropic({ apiKey });
-}
-
-/** @deprecated Use getAnthropic */
-export function createAiClient(): Anthropic | null {
-  return getAnthropic();
+  const google = createGoogleGenerativeAI({ apiKey });
+  return google(DEFAULT_GEMINI_MODEL);
 }

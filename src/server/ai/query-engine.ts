@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
+import { generateText } from "ai";
 import type { PrismaClient } from "@/generated/prisma/client";
-import { DEFAULT_CLAUDE_MODEL, getAnthropic } from "@/server/ai/client";
+import { getGeminiModel } from "@/server/ai/client";
 import { parseJsonObject } from "@/server/ai/parse-json-block";
 import { assertTenantScopedSelect } from "@/server/ai/sql-guard";
 
@@ -41,11 +42,11 @@ export async function runNLQuery(
   queryText: string,
   opts?: { warehouseIds?: string[] },
 ): Promise<NLQueryResult> {
-  const client = getAnthropic();
-  if (!client) {
+  const model = getGeminiModel();
+  if (!model) {
     throw new TRPCError({
       code: "PRECONDITION_FAILED",
-      message: "Anthropic API is not configured (ANTHROPIC_API_KEY).",
+      message: "Gemini API is not configured (GOOGLE_GENERATIVE_AI_API_KEY).",
     });
   }
 
@@ -54,20 +55,12 @@ export async function runNLQuery(
       ? `\nRestrict to these warehouse ids only: ${opts.warehouseIds.join(", ")}. Use the "warehouseId" column on stock_level, stock_movement, "order", and pick_list.`
       : "";
 
-  const completion = await client.messages.create({
-    model: DEFAULT_CLAUDE_MODEL,
-    max_tokens: 1024,
+  const { text } = await generateText({
+    model,
     system: `${SYSTEM_PROMPT.replaceAll("{accountId}", accountId)}${scope}`,
     messages: [{ role: "user", content: queryText }],
+    maxOutputTokens: 1024,
   });
-
-  const block = completion.content.find((b) => b.type === "text");
-  if (!block || block.type !== "text") {
-    throw new TRPCError({
-      code: "INTERNAL_SERVER_ERROR",
-      message: "Unexpected model response.",
-    });
-  }
 
   let parsed: {
     sql: string | null;
@@ -75,7 +68,7 @@ export async function runNLQuery(
     explanation: string;
   };
   try {
-    parsed = parseJsonObject(block.text);
+    parsed = parseJsonObject(text);
   } catch {
     throw new TRPCError({
       code: "BAD_REQUEST",

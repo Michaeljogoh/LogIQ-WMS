@@ -17,13 +17,13 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -516,16 +516,18 @@ export function PlatformSupportConsole() {
         </CardHeader>
       </Card>
 
-      <Dialog onOpenChange={setMfaOpen} open={mfaOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Verify two-factor authentication</DialogTitle>
-            <DialogDescription>
+      <Sheet onOpenChange={setMfaOpen} open={mfaOpen}>
+        <SheetContent className="sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Verify two-factor authentication</SheetTitle>
+            <SheetDescription>
               Emergency impersonation requires a fresh 2FA verification.
-            </DialogDescription>
-          </DialogHeader>
-          <TwoFactorOtpInput onChange={setMfaCode} value={mfaCode} />
-          <DialogFooter>
+            </SheetDescription>
+          </SheetHeader>
+          <div className="px-4">
+            <TwoFactorOtpInput onChange={setMfaCode} value={mfaCode} />
+          </div>
+          <SheetFooter>
             <Button
               disabled={mfaPending || mfaCode.length < 6}
               onClick={() => void verifyMfaAndContinue()}
@@ -533,9 +535,9 @@ export function PlatformSupportConsole() {
             >
               {mfaPending ? "Verifying…" : "Verify and continue"}
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

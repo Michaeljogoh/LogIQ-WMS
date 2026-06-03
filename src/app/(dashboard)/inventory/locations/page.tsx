@@ -35,7 +35,7 @@ export default function Page() {
 
       <div className="space-y-4">
         {locationsQuery.data?.map((zone) => (
-          <Card key={zone.code}>
+          <Card key={zone.id}>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle>
                 Zone {zone.code} - {zone.name}

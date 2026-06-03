@@ -6,6 +6,12 @@ import {
   TruckIcon,
   WarehouseIcon,
 } from "lucide-react";
+import {
+  LandingReveal,
+  LandingStagger,
+  LandingStaggerItem,
+} from "@/components/landing/landing-reveal";
+import { landingScaleIn } from "@/components/landing/landing-motion";
 
 const PILLARS = [
   {
@@ -38,7 +44,7 @@ export function LandingSolution() {
   return (
     <section className="border-t border-[var(--landing-border)] bg-[var(--landing-surface)] px-5 py-20 sm:px-8 sm:py-28">
       <div className="mx-auto max-w-6xl">
-        <div className="mx-auto mb-14 max-w-2xl text-center">
+        <LandingReveal className="mx-auto mb-14 max-w-2xl text-center">
           <h2 className="landing-display text-balance text-[clamp(1.75rem,3.5vw,2.5rem)] font-semibold leading-[1.12] tracking-[-0.03em] text-[var(--landing-ink)]">
             One platform for warehouse ops and client relationships
           </h2>
@@ -47,13 +53,13 @@ export function LandingSolution() {
             spreadsheets, and merchant portals with a single system designed
             for multi-tenant 3PL operations.
           </p>
-        </div>
+        </LandingReveal>
 
-        <div className="grid gap-5 md:grid-cols-3">
+        <LandingStagger className="grid gap-5 md:grid-cols-3">
           {PILLARS.map((pillar) => (
+            <LandingStaggerItem key={pillar.title} variants={landingScaleIn}>
             <article
-              key={pillar.title}
-              className="rounded-xl border border-[var(--landing-border)] bg-[var(--landing-bg)] p-6"
+              className="h-full rounded-xl border border-[var(--landing-border)] bg-[var(--landing-bg)] p-6 transition-transform duration-200 hover:-translate-y-0.5"
             >
               <div
                 className="mb-4 inline-flex size-10 items-center justify-center rounded-lg"
@@ -72,10 +78,12 @@ export function LandingSolution() {
                 {pillar.description}
               </p>
             </article>
+            </LandingStaggerItem>
           ))}
-        </div>
+        </LandingStagger>
 
-        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+        <LandingStagger className="mt-10 grid gap-4 sm:grid-cols-2" stagger={0.06}>
+          <LandingStaggerItem variants={landingScaleIn}>
           <div className="flex items-start gap-4 rounded-xl border border-[var(--landing-border)] bg-[var(--landing-bg)] p-5">
             <PackageIcon
               className="mt-0.5 size-5 shrink-0 text-[var(--landing-ink-subtle)]"
@@ -91,6 +99,8 @@ export function LandingSolution() {
               </p>
             </div>
           </div>
+          </LandingStaggerItem>
+          <LandingStaggerItem variants={landingScaleIn}>
           <div className="flex items-start gap-4 rounded-xl border border-[var(--landing-border)] bg-[var(--landing-bg)] p-5">
             <ArrowRightLeftIcon
               className="mt-0.5 size-5 shrink-0 text-[var(--landing-ink-subtle)]"
@@ -106,7 +116,8 @@ export function LandingSolution() {
               </p>
             </div>
           </div>
-        </div>
+          </LandingStaggerItem>
+        </LandingStagger>
       </div>
     </section>
   );

@@ -5,6 +5,7 @@ import { alertsRouter } from "@/server/api/routers/alerts";
 import { analyticsRouter } from "@/server/api/routers/analytics";
 import { billingRouter } from "@/server/api/routers/billing";
 import { cycleCountRouter } from "@/server/api/routers/cycle-count";
+import { dashboardRouter } from "@/server/api/routers/dashboard";
 import { integrationRouter } from "@/server/api/routers/integration";
 import { invoiceRouter } from "@/server/api/routers/invoice";
 import { labelRouter } from "@/server/api/routers/label";
@@ -19,6 +20,9 @@ import {
 import { orderRouter } from "@/server/api/routers/order";
 import { packagingRouter } from "@/server/api/routers/packaging";
 import { pickListRouter } from "@/server/api/routers/pick-list";
+import { platformRouter } from "@/server/api/routers/platform";
+import { platformAuditRouter } from "@/server/api/routers/platform-audit";
+import { platformSupportRouter } from "@/server/api/routers/platform-support";
 import { printQueueRouter } from "@/server/api/routers/print-queue";
 import { printerRouter } from "@/server/api/routers/printer";
 import { productRouter } from "@/server/api/routers/product";
@@ -30,9 +34,6 @@ import { stockLevelRouter } from "@/server/api/routers/stock-level";
 import { supplierRouter } from "@/server/api/routers/supplier";
 import { transferRouter } from "@/server/api/routers/transfer";
 import { warehouseRouter } from "@/server/api/routers/warehouse";
-import { platformRouter } from "@/server/api/routers/platform";
-import { platformAuditRouter } from "@/server/api/routers/platform-audit";
-import { platformSupportRouter } from "@/server/api/routers/platform-support";
 import { warehouseStaffRouter } from "@/server/api/routers/warehouse-staff";
 import { workOrderRouter } from "@/server/api/routers/work-order";
 import {
@@ -62,6 +63,7 @@ export const appRouter = createTRPCRouter({
   cycleCount: cycleCountRouter,
   alerts: alertsRouter,
   analytics: analyticsRouter,
+  dashboard: dashboardRouter,
   supplier: supplierRouter,
   purchaseOrder: purchaseOrderRouter,
   workOrder: workOrderRouter,

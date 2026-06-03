@@ -7,13 +7,13 @@ import { useTRPC } from "@/app/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -82,17 +82,17 @@ export default function PackagingSettingsPage() {
       <Card>
         <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
           <CardTitle>Box types</CardTitle>
-          <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
+          <Sheet open={open} onOpenChange={setOpen}>
+            <SheetTrigger asChild>
               <Button type="button" className="min-h-11">
                 Add packaging type
               </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-md">
-              <DialogHeader>
-                <DialogTitle>New packaging type</DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-3 py-2">
+            </SheetTrigger>
+            <SheetContent className="overflow-y-auto sm:max-w-md">
+              <SheetHeader>
+                <SheetTitle>New packaging type</SheetTitle>
+              </SheetHeader>
+              <div className="grid gap-3 px-4 py-2">
                 <div className="space-y-2">
                   <Label htmlFor="pn">Name</Label>
                   <Input
@@ -162,7 +162,7 @@ export default function PackagingSettingsPage() {
                   />
                 </div>
               </div>
-              <DialogFooter>
+              <SheetFooter>
                 <Button
                   type="button"
                   disabled={createMutation.isPending || !name.trim()}
@@ -191,9 +191,9 @@ export default function PackagingSettingsPage() {
                 >
                   Save
                 </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
+              </SheetFooter>
+            </SheetContent>
+          </Sheet>
         </CardHeader>
         <CardContent>
           <Table>

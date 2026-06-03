@@ -78,8 +78,7 @@ export function NavUser({
 
   const isPortal = navContext === "portal" || isMerchantPortalRole(systemRole);
   const showOperatorBilling =
-    canManageOperatorBilling(systemRole) &&
-    systemRole !== "PLATFORM_ADMIN";
+    canManageOperatorBilling(systemRole) && systemRole !== "PLATFORM_ADMIN";
   const showPlatformHome = systemRole === "PLATFORM_ADMIN";
   const showMerchantBilling =
     isPortal &&

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LandingReveal } from "@/components/landing/landing-reveal";
 
 const FOOTER_LINKS = {
   Product: [
@@ -21,7 +22,7 @@ const FOOTER_LINKS = {
 export function LandingFooter() {
   return (
     <footer className="border-t border-[var(--landing-border)] px-5 py-12 sm:px-8">
-      <div className="mx-auto max-w-6xl">
+      <LandingReveal className="mx-auto max-w-6xl">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-1">
             <Link
@@ -78,7 +79,7 @@ export function LandingFooter() {
             </a>
           </div>
         </div>
-      </div>
+      </LandingReveal>
     </footer>
   );
 }

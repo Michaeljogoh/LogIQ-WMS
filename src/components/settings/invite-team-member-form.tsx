@@ -10,14 +10,14 @@ import { useTRPC } from "@/app/trpc/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetFooter,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -120,20 +120,20 @@ export function InviteTeamMemberForm(props: Readonly<{ onSuccess?: () => void }>
   }
 
   return (
-    <Dialog onOpenChange={setOpen} open={open}>
-      <DialogTrigger asChild>
+    <Sheet onOpenChange={setOpen} open={open}>
+      <SheetTrigger asChild>
         <Button>Invite team member</Button>
-      </DialogTrigger>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Invite team member</DialogTitle>
-          <DialogDescription>
+      </SheetTrigger>
+      <SheetContent className="overflow-y-auto sm:max-w-lg">
+        <SheetHeader>
+          <SheetTitle>Invite team member</SheetTitle>
+          <SheetDescription>
             Assign a role and warehouse access. We will email a temporary password
             and sign-in instructions.
-          </DialogDescription>
-        </DialogHeader>
+          </SheetDescription>
+        </SheetHeader>
         <form
-          className="space-y-4"
+          className="space-y-4 px-4"
           onSubmit={form.handleSubmit((values) => {
             const permissions: ("PICK" | "PACK" | "RECEIVE")[] = [];
             if (values.pick) permissions.push("PICK");
@@ -249,7 +249,7 @@ export function InviteTeamMemberForm(props: Readonly<{ onSuccess?: () => void }>
               </div>
             </FieldGroup>
           ) : null}
-          <DialogFooter className="gap-2 sm:gap-0">
+          <SheetFooter className="flex-row justify-end gap-2 px-0">
             <Button
               onClick={() => setOpen(false)}
               type="button"
@@ -260,9 +260,9 @@ export function InviteTeamMemberForm(props: Readonly<{ onSuccess?: () => void }>
             <Button disabled={inviteMutation.isPending} type="submit">
               Send invitation
             </Button>
-          </DialogFooter>
+          </SheetFooter>
         </form>
-      </DialogContent>
-    </Dialog>
+      </SheetContent>
+    </Sheet>
   );
 }

@@ -3,7 +3,54 @@ import { z } from "zod";
 import { createTRPCRouter, protectedProc, requireRole } from "@/app/trpc/init";
 import { requireLinkedTenant } from "@/server/api/ctx-ids";
 import { assertWithinMerchantLimit } from "@/server/billing/plan-limits";
+import { getOrSetCache } from "@/server/cache/analytics-cache";
 import { inviteMerchantUser } from "@/server/helpers/merchant-team-invite";
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+const PORTAL_TREND_DAYS = 14;
+
+function startOfUtcDay(date: Date) {
+  return new Date(
+    Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()),
+  );
+}
+
+function endOfUtcDay(date: Date) {
+  return new Date(
+    Date.UTC(
+      date.getUTCFullYear(),
+      date.getUTCMonth(),
+      date.getUTCDate(),
+      23,
+      59,
+      59,
+      999,
+    ),
+  );
+}
+
+function toIsoDay(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function daysBetween(from: Date, to: Date) {
+  const list: Date[] = [];
+  let cursor = startOfUtcDay(from).getTime();
+  const end = endOfUtcDay(to).getTime();
+  while (cursor <= end) {
+    list.push(new Date(cursor));
+    cursor += DAY_MS;
+  }
+  return list;
+}
+
+function formatFulfillmentLabel(status: string) {
+  return status
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
 
 export const merchantRouter = createTRPCRouter({
   list: protectedProc
@@ -202,43 +249,233 @@ export const merchantRouter = createTRPCRouter({
         });
       }
       const merchantId = ctx.merchantId;
-      const [orderCount, lowStockCount, recentShipments, latestInvoice] =
-        await ctx.db.$transaction([
-          ctx.db.order.count({
-            where: {
-              accountId,
-              merchantId,
-              fulfillmentStatus: { not: "FULFILLED" },
-            },
-          }),
-          ctx.db.product.count({
-            where: {
-              accountId,
-              merchantId,
-              lowStockThreshold: { not: null },
-              stockLevels: {
-                some: {
-                  quantity: { lt: 10 },
-                },
+
+      return getOrSetCache({
+        key: `merchant:${accountId}:${merchantId}:portal-dashboard`,
+        ttlSeconds: 300,
+        compute: async () => {
+          const now = new Date();
+          const rangeStart = new Date(
+            now.getTime() - (PORTAL_TREND_DAYS - 1) * DAY_MS,
+          );
+          const startDay = startOfUtcDay(rangeStart);
+          const endDay = endOfUtcDay(now);
+
+          const sevenDaysAgo = new Date(now.getTime() - 7 * DAY_MS);
+
+          const [
+            merchant,
+            orderCount,
+            activeSkuCount,
+            stockAggregate,
+            productsWithStock,
+            recentShipments,
+            latestInvoice,
+            ordersInRange,
+            openOrdersForMix,
+            orders7d,
+            integration,
+          ] = await ctx.db.$transaction([
+            ctx.db.merchant.findFirst({
+              where: { id: merchantId, accountId },
+              select: { name: true, email: true },
+            }),
+            ctx.db.order.count({
+              where: {
+                accountId,
+                merchantId,
+                fulfillmentStatus: { not: "FULFILLED" },
               },
+            }),
+            ctx.db.product.count({
+              where: { accountId, merchantId, isActive: true },
+            }),
+            ctx.db.stockLevel.aggregate({
+              where: {
+                accountId,
+                product: { merchantId, isActive: true },
+              },
+              _sum: { quantity: true },
+            }),
+            ctx.db.product.findMany({
+              where: {
+                accountId,
+                merchantId,
+                isActive: true,
+                lowStockThreshold: { not: null },
+              },
+              select: {
+                id: true,
+                name: true,
+                sku: true,
+                lowStockThreshold: true,
+                stockLevels: { select: { quantity: true } },
+              },
+            }),
+            ctx.db.shipment.findMany({
+              where: { accountId, order: { merchantId } },
+              orderBy: { createdAt: "desc" },
+              take: 5,
+              select: {
+                id: true,
+                carrier: true,
+                status: true,
+                createdAt: true,
+                order: { select: { channelOrderId: true } },
+              },
+            }),
+            ctx.db.invoice.findFirst({
+              where: { accountId, merchantId },
+              orderBy: { createdAt: "desc" },
+            }),
+            ctx.db.order.findMany({
+              where: {
+                accountId,
+                merchantId,
+                createdAt: { gte: startDay, lte: endDay },
+              },
+              select: { createdAt: true, fulfillmentStatus: true },
+            }),
+            ctx.db.order.findMany({
+              where: {
+                accountId,
+                merchantId,
+                fulfillmentStatus: { not: "FULFILLED" },
+              },
+              select: { fulfillmentStatus: true },
+            }),
+            ctx.db.order.findMany({
+              where: {
+                accountId,
+                merchantId,
+                createdAt: { gte: sevenDaysAgo, lte: endDay },
+              },
+              select: { fulfillmentStatus: true },
+            }),
+            ctx.db.integration.findFirst({
+              where: { accountId, merchantId },
+              orderBy: { lastSyncAt: "desc" },
+              select: {
+                type: true,
+                status: true,
+                metadata: true,
+                lastSyncAt: true,
+              },
+            }),
+          ]);
+
+          const lowStockItems = productsWithStock
+            .map((product) => {
+              const quantity = product.stockLevels.reduce(
+                (sum, row) => sum + row.quantity,
+                0,
+              );
+              const threshold = product.lowStockThreshold ?? 0;
+              return {
+                id: product.id,
+                name: product.name,
+                sku: product.sku,
+                quantity,
+                threshold,
+              };
+            })
+            .filter((row) => row.quantity < row.threshold)
+            .sort((a, b) => a.quantity - b.quantity)
+            .slice(0, 6);
+
+          const lowStockCount = lowStockItems.length;
+          const totalSkus = activeSkuCount;
+          const unitsOnHand = stockAggregate._sum.quantity ?? 0;
+
+          const fulfilled7d = orders7d.filter(
+            (o) => o.fulfillmentStatus === "FULFILLED",
+          ).length;
+          const fulfillmentRate7d =
+            orders7d.length > 0
+              ? Math.round((fulfilled7d / orders7d.length) * 10000) / 100
+              : 0;
+
+          const integrationMeta = integration?.metadata as
+            | Record<string, unknown>
+            | null
+            | undefined;
+          const shopDomain =
+            typeof integrationMeta?.shopDomain === "string"
+              ? integrationMeta.shopDomain
+              : typeof integrationMeta?.siteUrl === "string"
+                ? integrationMeta.siteUrl
+                : null;
+
+          const dayKeys = daysBetween(startDay, now).map(toIsoDay);
+          const orderTrendMap = new Map(
+            dayKeys.map((date) => [date, { date, orders: 0, shipped: 0 }]),
+          );
+          for (const order of ordersInRange) {
+            const day = toIsoDay(order.createdAt);
+            const row = orderTrendMap.get(day);
+            if (row) {
+              row.orders += 1;
+              if (order.fulfillmentStatus === "FULFILLED") {
+                row.shipped += 1;
+              }
+            }
+          }
+
+          const shipmentTrendMap = new Map(
+            dayKeys.map((date) => [date, { date, shipments: 0 }]),
+          );
+          const shipmentsInRange = await ctx.db.shipment.findMany({
+            where: {
+              accountId,
+              order: { merchantId },
+              createdAt: { gte: startDay, lte: endDay },
             },
-          }),
-          ctx.db.shipment.findMany({
-            where: { accountId, order: { merchantId } },
-            orderBy: { createdAt: "desc" },
-            take: 5,
-          }),
-          ctx.db.invoice.findFirst({
-            where: { accountId, merchantId },
-            orderBy: { createdAt: "desc" },
-          }),
-        ]);
-      return {
-        openOrders: orderCount,
-        lowStockCount,
-        recentShipments,
-        latestInvoice,
-      };
+            select: { createdAt: true },
+          });
+          for (const shipment of shipmentsInRange) {
+            const day = toIsoDay(shipment.createdAt);
+            const row = shipmentTrendMap.get(day);
+            if (row) row.shipments += 1;
+          }
+
+          return {
+            periodDays: PORTAL_TREND_DAYS,
+            merchantName: merchant?.name ?? "Your brand",
+            merchantEmail: merchant?.email ?? null,
+            openOrders: orderCount,
+            lowStockCount,
+            lowStockItems,
+            totalSkus,
+            unitsOnHand,
+            fulfillmentRate7d,
+            integration: integration
+              ? {
+                  type: integration.type,
+                  status: integration.status,
+                  shopDomain,
+                  lastSyncAt: integration.lastSyncAt,
+                }
+              : null,
+            recentShipments,
+            latestInvoice,
+            orderTrend: [...orderTrendMap.values()],
+            shipmentTrend: [...shipmentTrendMap.values()],
+            statusMix: (() => {
+              const mix = new Map<string, number>();
+              for (const order of openOrdersForMix) {
+                mix.set(
+                  order.fulfillmentStatus,
+                  (mix.get(order.fulfillmentStatus) ?? 0) + 1,
+                );
+              }
+              return [...mix.entries()].map(([status, value]) => ({
+                name: formatFulfillmentLabel(status),
+                value,
+              }));
+            })(),
+          };
+        },
+      });
     }),
 
   getContract: protectedProc
