@@ -33,17 +33,21 @@ export function PlatformSidebar({
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
+      <SidebarHeader className="border-b border-sidebar-border/60 pb-0">
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton size="lg" asChild>
+            <SidebarMenuButton
+              size="lg"
+              asChild
+              className="h-14 rounded-none px-4 hover:bg-sidebar-accent/60"
+            >
               <Link href="/platform/dashboard">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                  <Building2Icon className="size-4" />
+                <div className="flex aspect-square size-8 shrink-0 items-center justify-center rounded-lg bg-sidebar-primary/10">
+                  <Building2Icon className="size-4 text-sidebar-primary" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-semibold">LogIQ Platform</span>
-                  <span className="truncate text-xs text-muted-foreground">
+                  <span className="truncate font-semibold tracking-tight">LogIQ Platform</span>
+                  <span className="truncate text-[10px] font-medium uppercase tracking-wider text-sidebar-foreground/45">
                     Internal console
                   </span>
                 </div>
@@ -52,10 +56,10 @@ export function PlatformSidebar({
           </SidebarMenuItem>
         </SidebarMenu>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="overflow-x-hidden py-2">
         <NavMain sections={sections} />
       </SidebarContent>
-      <SidebarFooter>
+      <SidebarFooter className="border-t border-sidebar-border/60 pt-0">
         <NavUser
           user={user}
           systemRole="PLATFORM_ADMIN"

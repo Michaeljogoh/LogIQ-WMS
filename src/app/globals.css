@@ -4,179 +4,186 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─────────────────────────────────────────────
+   LIGHT MODE  (default)
+   Primary is the brand blue from the landing page.
+   Success / warning / danger form a complete semantic set.
+────────────────────────────────────────────── */
 :root {
-  --background: #ffffff;
-  --foreground: #0a0a0a;
-  --card: #ffffff;
-  --card-foreground: #0a0a0a;
-  --popover: #ffffff;
-  --popover-foreground: #0a0a0a;
-  --primary: #171717;
-  --primary-foreground: #fafafa;
-  --secondary: #f5f5f5;
-  --secondary-foreground: #171717;
-  --muted: #f5f5f5;
-  --muted-foreground: #737373;
-  --accent: #f5f5f5;
-  --accent-foreground: #171717;
-  --destructive: #e7000b;
-  --destructive-foreground: #ffffff;
-  --border: #e5e5e5;
-  --input: #e5e5e5;
-  --ring: #a1a1a1;
-  --chart-1: #91c5ff;
-  --chart-2: #3a81f6;
-  --chart-3: #2563ef;
-  --chart-4: #1a4eda;
-  --chart-5: #1f3fad;
-  --sidebar: #fafafa;
-  --sidebar-foreground: #0a0a0a;
-  --sidebar-primary: #171717;
-  --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: #f5f5f5;
-  --sidebar-accent-foreground: #171717;
-  --sidebar-border: #e5e5e5;
-  --sidebar-ring: #a1a1a1;
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
-  --radius: 0.625rem;
-  --shadow-x: 0;
-  --shadow-y: 1px;
-  --shadow-blur: 3px;
-  --shadow-spread: 0px;
-  --shadow-opacity: 0.1;
-  --shadow-color: oklch(0 0 0);
-  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow-md:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-  --shadow-lg:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-  --shadow-xl:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
-  --tracking-normal: 0em;
-  --spacing: 0.25rem;
+  /* Surface */
+  --background:            oklch(0.99 0.002 260);
+  --foreground:            oklch(0.12 0.012 260);
+  --card:                  oklch(1.00 0.000  0);
+  --card-foreground:       oklch(0.12 0.012 260);
+  --popover:               oklch(1.00 0.000  0);
+  --popover-foreground:    oklch(0.12 0.012 260);
+
+  /* Brand — landing accent → primary button */
+  --primary:               oklch(0.55 0.22 252);
+  --primary-foreground:    oklch(1.00 0.000  0);
+
+  /* Secondary / muted */
+  --secondary:             oklch(0.96 0.004 260);
+  --secondary-foreground:  oklch(0.22 0.015 260);
+  --muted:                 oklch(0.96 0.004 260);
+  --muted-foreground:      oklch(0.52 0.018 260);
+  --accent:                oklch(0.94 0.008 252);
+  --accent-foreground:     oklch(0.25 0.025 252);
+
+  /* Semantic */
+  --destructive:           oklch(0.55 0.22  27);
+  --destructive-foreground: oklch(1.00 0.000 0);
+  --success:               oklch(0.52 0.17 155);
+  --success-foreground:    oklch(1.00 0.000  0);
+  --warning:               oklch(0.60 0.16  78);
+  --warning-foreground:    oklch(1.00 0.000  0);
+  --info:                  oklch(0.56 0.19 232);
+  --info-foreground:       oklch(1.00 0.000  0);
+
+  /* Borders / inputs / ring */
+  --border:                oklch(0.89 0.006 260);
+  --input:                 oklch(0.89 0.006 260);
+  --ring:                  oklch(0.55 0.22 252);
+
+  /* Sidebar — white, distinct from the slightly off-white content area */
+  --sidebar:               oklch(1.00 0.000   0);
+  --sidebar-foreground:    oklch(0.18 0.015 260);
+  --sidebar-primary:       oklch(0.55 0.22 252);
+  --sidebar-primary-foreground: oklch(1.00 0.000 0);
+  --sidebar-accent:        oklch(0.92 0.008 252);
+  --sidebar-accent-foreground: oklch(0.25 0.025 252);
+  --sidebar-border:        oklch(0.89 0.006 260);
+  --sidebar-ring:          oklch(0.55 0.22 252);
+
+  /* Charts — using brand blue ramp */
+  --chart-1: oklch(0.55 0.22 252);
+  --chart-2: oklch(0.52 0.17 155);
+  --chart-3: oklch(0.60 0.16  78);
+  --chart-4: oklch(0.56 0.19 232);
+  --chart-5: oklch(0.55 0.20 295);
+
+  /* Radius */
+  --radius: 0.5rem;
+
+  /* Shadows */
+  --shadow-sm:  0 1px 2px 0 oklch(0 0 0 / 0.05);
+  --shadow:     0 1px 3px 0 oklch(0 0 0 / 0.08), 0 1px 2px -1px oklch(0 0 0 / 0.06);
+  --shadow-md:  0 4px 6px -1px oklch(0 0 0 / 0.08), 0 2px 4px -2px oklch(0 0 0 / 0.05);
+  --shadow-lg:  0 10px 15px -3px oklch(0 0 0 / 0.08), 0 4px 6px -4px oklch(0 0 0 / 0.05);
 }
 
+/* ─────────────────────────────────────────────
+   DARK MODE
+   Deep navy-charcoal backgrounds (brand hue 260).
+   Sidebar goes pitch-dark to match the landing page's control-room feel.
+────────────────────────────────────────────── */
 .dark {
-  --background: #0a0a0a;
-  --foreground: #fafafa;
-  --card: #171717;
-  --card-foreground: #fafafa;
-  --popover: #262626;
-  --popover-foreground: #fafafa;
-  --primary: #e5e5e5;
-  --primary-foreground: #171717;
-  --secondary: #262626;
-  --secondary-foreground: #fafafa;
-  --muted: #262626;
-  --muted-foreground: #a1a1a1;
-  --accent: #404040;
-  --accent-foreground: #fafafa;
-  --destructive: #ff6467;
-  --destructive-foreground: #fafafa;
-  --border: #282828;
-  --input: #343434;
-  --ring: #737373;
-  --chart-1: #91c5ff;
-  --chart-2: #3a81f6;
-  --chart-3: #2563ef;
-  --chart-4: #1a4eda;
-  --chart-5: #1f3fad;
-  --sidebar: #171717;
-  --sidebar-foreground: #fafafa;
-  --sidebar-primary: #1447e6;
-  --sidebar-primary-foreground: #fafafa;
-  --sidebar-accent: #262626;
-  --sidebar-accent-foreground: #fafafa;
-  --sidebar-border: #282828;
-  --sidebar-ring: #525252;
-  --font-sans:
-    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
-  --font-serif: ui-serif, Georgia, Cambria, "Times New Roman", Times, serif;
-  --font-mono:
-    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
-    "Courier New", monospace;
-  --radius: 0.625rem;
-  --shadow-x: 0;
-  --shadow-y: 1px;
-  --shadow-blur: 3px;
-  --shadow-spread: 0px;
-  --shadow-opacity: 0.1;
-  --shadow-color: oklch(0 0 0);
-  --shadow-2xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-xs: 0 1px 3px 0px hsl(0 0% 0% / 0.05);
-  --shadow-sm:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow: 0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 1px 2px -1px hsl(0 0% 0% / 0.1);
-  --shadow-md:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 2px 4px -1px hsl(0 0% 0% / 0.1);
-  --shadow-lg:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 4px 6px -1px hsl(0 0% 0% / 0.1);
-  --shadow-xl:
-    0 1px 3px 0px hsl(0 0% 0% / 0.1), 0 8px 10px -1px hsl(0 0% 0% / 0.1);
-  --shadow-2xl: 0 1px 3px 0px hsl(0 0% 0% / 0.25);
+  --background:            oklch(0.13 0.012 260);
+  --foreground:            oklch(0.95 0.005 260);
+  --card:                  oklch(0.17 0.014 260);
+  --card-foreground:       oklch(0.95 0.005 260);
+  --popover:               oklch(0.19 0.016 260);
+  --popover-foreground:    oklch(0.95 0.005 260);
+
+  /* Brand stays the same hue, slightly lighter for dark bg */
+  --primary:               oklch(0.63 0.20 252);
+  --primary-foreground:    oklch(0.10 0.010 260);
+
+  --secondary:             oklch(0.22 0.016 260);
+  --secondary-foreground:  oklch(0.90 0.006 260);
+  --muted:                 oklch(0.22 0.016 260);
+  --muted-foreground:      oklch(0.62 0.020 260);
+  --accent:                oklch(0.63 0.20 252 / 0.15);
+  --accent-foreground:     oklch(0.78 0.14 252);
+
+  --destructive:           oklch(0.65 0.22  27);
+  --destructive-foreground: oklch(0.10 0.000 0);
+  --success:               oklch(0.65 0.18 155);
+  --success-foreground:    oklch(0.10 0.000 0);
+  --warning:               oklch(0.72 0.16  78);
+  --warning-foreground:    oklch(0.10 0.000 0);
+  --info:                  oklch(0.68 0.18 232);
+  --info-foreground:       oklch(0.10 0.000 0);
+
+  --border:                oklch(0.28 0.018 260);
+  --input:                 oklch(0.28 0.018 260);
+  --ring:                  oklch(0.63 0.20 252);
+
+  /* Dark sidebar — the control-room feel */
+  --sidebar:               oklch(0.10 0.012 260);
+  --sidebar-foreground:    oklch(0.88 0.006 260);
+  --sidebar-primary:       oklch(0.63 0.20 252);
+  --sidebar-primary-foreground: oklch(0.10 0.010 260);
+  --sidebar-accent:        oklch(0.63 0.20 252 / 0.12);
+  --sidebar-accent-foreground: oklch(0.78 0.14 252);
+  --sidebar-border:        oklch(0.20 0.015 260);
+  --sidebar-ring:          oklch(0.63 0.20 252);
+
+  --chart-1: oklch(0.63 0.20 252);
+  --chart-2: oklch(0.65 0.18 155);
+  --chart-3: oklch(0.72 0.16  78);
+  --chart-4: oklch(0.68 0.18 232);
+  --chart-5: oklch(0.65 0.19 295);
+
+  --shadow-sm:  0 1px 2px 0 oklch(0 0 0 / 0.30);
+  --shadow:     0 1px 3px 0 oklch(0 0 0 / 0.35), 0 1px 2px -1px oklch(0 0 0 / 0.25);
+  --shadow-md:  0 4px 6px -1px oklch(0 0 0 / 0.35), 0 2px 4px -2px oklch(0 0 0 / 0.20);
+  --shadow-lg:  0 10px 15px -3px oklch(0 0 0 / 0.35), 0 4px 6px -4px oklch(0 0 0 / 0.20);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
+  --color-background:             var(--background);
+  --color-foreground:             var(--foreground);
+  --color-card:                   var(--card);
+  --color-card-foreground:        var(--card-foreground);
+  --color-popover:                var(--popover);
+  --color-popover-foreground:     var(--popover-foreground);
+  --color-primary:                var(--primary);
+  --color-primary-foreground:     var(--primary-foreground);
+  --color-secondary:              var(--secondary);
+  --color-secondary-foreground:   var(--secondary-foreground);
+  --color-muted:                  var(--muted);
+  --color-muted-foreground:       var(--muted-foreground);
+  --color-accent:                 var(--accent);
+  --color-accent-foreground:      var(--accent-foreground);
+  --color-destructive:            var(--destructive);
   --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
+  --color-success:                var(--success);
+  --color-success-foreground:     var(--success-foreground);
+  --color-warning:                var(--warning);
+  --color-warning-foreground:     var(--warning-foreground);
+  --color-info:                   var(--info);
+  --color-info-foreground:        var(--info-foreground);
+  --color-border:                 var(--border);
+  --color-input:                  var(--input);
+  --color-ring:                   var(--ring);
+  --color-chart-1:                var(--chart-1);
+  --color-chart-2:                var(--chart-2);
+  --color-chart-3:                var(--chart-3);
+  --color-chart-4:                var(--chart-4);
+  --color-chart-5:                var(--chart-5);
+  --color-sidebar:                var(--sidebar);
+  --color-sidebar-foreground:     var(--sidebar-foreground);
+  --color-sidebar-primary:        var(--sidebar-primary);
   --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent:         var(--sidebar-accent);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border:         var(--sidebar-border);
+  --color-sidebar-ring:           var(--sidebar-ring);
 
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-mono);
-  --font-serif: var(--font-serif);
+  --font-sans:   var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono:   var(--font-geist-mono), ui-monospace, monospace;
+  --font-serif:  ui-serif, Georgia, serif;
 
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
+  --radius-sm:   calc(var(--radius) - 4px);
+  --radius-md:   calc(var(--radius) - 2px);
+  --radius-lg:   var(--radius);
+  --radius-xl:   calc(var(--radius) + 4px);
 
-  --shadow-2xs: var(--shadow-2xs);
-  --shadow-xs: var(--shadow-xs);
-  --shadow-sm: var(--shadow-sm);
-  --shadow: var(--shadow);
-  --shadow-md: var(--shadow-md);
-  --shadow-lg: var(--shadow-lg);
-  --shadow-xl: var(--shadow-xl);
-  --shadow-2xl: var(--shadow-2xl);
+  --shadow-sm:   var(--shadow-sm);
+  --shadow:      var(--shadow);
+  --shadow-md:   var(--shadow-md);
+  --shadow-lg:   var(--shadow-lg);
 }
 
 @layer base {
@@ -184,6 +191,34 @@
     @apply border-border outline-ring/50;
   }
   body {
-    @apply bg-background font-sans text-foreground;
+    @apply bg-background font-sans text-foreground antialiased;
+  }
+
+  /* Scrollbar — thin and tinted in dark mode */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb {
+    background: oklch(0 0 0 / 0.15);
+    border-radius: 99px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: oklch(0 0 0 / 0.25);
+  }
+  .dark ::-webkit-scrollbar-thumb {
+    background: oklch(1 0 0 / 0.10);
+  }
+  .dark ::-webkit-scrollbar-thumb:hover {
+    background: oklch(1 0 0 / 0.20);
+  }
+
+  /* Focus visible — brand ring, not default black */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+
+  /* Selection */
+  ::selection {
+    background: oklch(0.55 0.22 252 / 0.20);
   }
 }
