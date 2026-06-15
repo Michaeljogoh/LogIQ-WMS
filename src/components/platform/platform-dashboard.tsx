@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import {
+  ArrowRightIcon,
   Building2Icon,
   HeadphonesIcon,
   LayoutDashboardIcon,
@@ -17,6 +18,8 @@ import { DashboardLineChart } from "@/components/charts/dashboard-line-chart";
 import { DashboardPieChart } from "@/components/charts/dashboard-pie-chart";
 import { KpiStatCard } from "@/components/charts/kpi-stat-card";
 import { DashboardFeatureGrid } from "@/components/dashboard/dashboard-feature-grid";
+import { OperatorPageHeader } from "@/components/dashboard/operator-page-header";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -25,6 +28,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 const PLATFORM_FEATURES = [
   {
@@ -66,6 +71,12 @@ const PLATFORM_FEATURES = [
   },
 ] as const;
 
+function formatPlanLabel(plan: string): string {
+  if (!plan) return "Free";
+  const rest = plan.slice(1).toLowerCase().replaceAll("_", " ");
+  return plan.charAt(0).toUpperCase() + rest;
+}
+
 export function PlatformDashboard() {
   const trpc = useTRPC();
   const overviewQuery = useQuery(trpc.platform.overview.queryOptions());
@@ -74,6 +85,7 @@ export function PlatformDashboard() {
 
   const overview = overviewQuery.data;
   const charts = chartsQuery.data;
+  const recentAccounts = accountsQuery.data?.slice(0, 6) ?? [];
 
   const trendEmpty =
     !chartsQuery.isLoading &&
@@ -81,42 +93,45 @@ export function PlatformDashboard() {
 
   return (
     <div className="space-y-8 p-6">
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            Platform dashboard
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            LogIQ internal console — cross-tenant visibility. Last 14 days.
-          </p>
-        </div>
-        <Button asChild size="sm">
-          <Link href="/platform/support">Open support</Link>
-        </Button>
-      </div>
+      <OperatorPageHeader
+        title="Platform dashboard"
+        description="LogIQ internal console — cross-tenant visibility. Last 14 days."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link href="/platform/accounts">All accounts</Link>
+            </Button>
+            <Button asChild size="sm">
+              <Link href="/platform/support">Open support</Link>
+            </Button>
+          </div>
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiStatCard
-          accent="primary"
+          accent="navy-blue"
           icon={Building2Icon}
           isLoading={overviewQuery.isLoading}
           label="Tenant accounts"
           value={overview?.accountCount ?? 0}
         />
         <KpiStatCard
+          accent="navy"
           icon={LayoutDashboardIcon}
           isLoading={overviewQuery.isLoading}
           label="Warehouses"
           value={overview?.warehouseCount ?? 0}
         />
         <KpiStatCard
+          accent="navy-violet"
           icon={UsersIcon}
           isLoading={overviewQuery.isLoading}
           label="Merchants"
           value={overview?.merchantCount ?? 0}
         />
         <KpiStatCard
-          accent="success"
+          accent="navy-teal"
           isLoading={overviewQuery.isLoading}
           label="Orders (all time)"
           value={overview?.orderCount ?? 0}
@@ -158,41 +173,65 @@ export function PlatformDashboard() {
           <DashboardBarChart data={charts?.topTenants ?? []} />
         </ChartCard>
 
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between gap-4">
-            <div>
-              <CardTitle className="text-base">
+        <Card className="dashboard-chart-card ring-0">
+          <CardHeader className="flex flex-row items-start justify-between gap-4 pb-3">
+            <div className="space-y-1">
+              <CardTitle className="text-base font-bold">
                 Recent tenant accounts
               </CardTitle>
               <CardDescription>
-                Start support from the Support page or view account details.
+                Start support from the Support page or open account details.
               </CardDescription>
             </div>
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size="sm" className="shrink-0">
               <Link href="/platform/accounts">View all</Link>
             </Button>
           </CardHeader>
-          <CardContent className="space-y-3">
+          <CardContent className="space-y-1">
             {accountsQuery.isLoading ? (
-              <p className="text-sm text-muted-foreground">Loading accounts…</p>
-            ) : null}
-            {accountsQuery.data?.slice(0, 6).map((account) => (
-              <div
-                className="flex flex-wrap items-center justify-between gap-2 border-b border-border/60 py-3 last:border-0"
-                key={account.id}
-              >
-                <div>
-                  <p className="text-sm font-medium">{account.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {account.plan} · {account.warehouseCount} warehouses ·{" "}
-                    {account.merchantCount} merchants
-                  </p>
-                </div>
-                <Button asChild size="sm" variant="outline">
-                  <Link href={`/platform/accounts/${account.id}`}>Details</Link>
-                </Button>
+              <div className="space-y-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <Skeleton key={i} className="h-14 w-full rounded-lg" />
+                ))}
               </div>
-            ))}
+            ) : recentAccounts.length ? (
+              recentAccounts.map((account) => (
+                <Link
+                  key={account.id}
+                  href={`/platform/accounts/${account.id}`}
+                  className={cn(
+                    "platform-interactive-item group flex items-center justify-between gap-3 px-3 py-3",
+                  )}
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="platform-module-title truncate text-sm font-semibold transition-colors duration-200">
+                        {account.name}
+                      </p>
+                      <Badge
+                        variant="secondary"
+                        className="platform-module-badge h-5 rounded-md border-0 bg-[#0b213a]/8 px-1.5 text-[10px] font-medium text-[#0b213a] transition-colors duration-200 dark:bg-white/10 dark:text-white/90"
+                      >
+                        {formatPlanLabel(account.plan)}
+                      </Badge>
+                    </div>
+                    <p className="platform-module-desc mt-0.5 text-xs text-muted-foreground transition-colors duration-200">
+                      {account.warehouseCount} warehouses ·{" "}
+                      {account.merchantCount} merchants · {account.orderCount}{" "}
+                      orders
+                    </p>
+                  </div>
+                  <span className="platform-module-cta inline-flex shrink-0 items-center text-xs font-medium text-[#1a4fd6] opacity-0 transition-all duration-200 group-hover:opacity-100">
+                    Details
+                    <ArrowRightIcon className="ml-1 size-3.5" />
+                  </span>
+                </Link>
+              ))
+            ) : (
+              <p className="rounded-lg border border-dashed border-border/80 bg-muted/20 px-4 py-8 text-center text-sm text-muted-foreground">
+                No tenant accounts yet.
+              </p>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -202,6 +241,7 @@ export function PlatformDashboard() {
         description="Platform tools for internal LogIQ operators."
         links={[...PLATFORM_FEATURES]}
         title="Platform modules"
+        variant="platform"
       />
     </div>
   );

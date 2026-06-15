@@ -44,7 +44,7 @@ export function NavMain({
     <>
       {sections.map((section) => (
         <SidebarGroup key={section.label} className="px-2 py-1">
-          <SidebarGroupLabel className="mb-1 px-2 text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
+          <SidebarGroupLabel className="dashboard-section-label mb-1 px-2 text-[10px]">
             {section.label}
           </SidebarGroupLabel>
           <SidebarMenu className="gap-0.5">
@@ -63,14 +63,11 @@ export function NavMain({
                       tooltip={item.title}
                       isActive={active}
                       className={cn(
-                        "h-9 rounded-lg px-3 text-[13px] font-medium transition-colors duration-150",
+                        "h-9 rounded-lg border-l-[3px] border-transparent px-3 text-[13px] font-medium text-white transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] data-active:text-white hover:text-white",
                         active
-                          ? "bg-sidebar-primary text-sidebar-primary-foreground shadow-sm"
-                          : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                        "[&_svg]:size-4 [&_svg]:shrink-0",
-                        active
-                          ? "[&_svg]:text-sidebar-primary-foreground"
-                          : "[&_svg]:text-sidebar-foreground/50",
+                          ? "border-l-sidebar-primary bg-gradient-to-r from-sidebar-primary/18 to-transparent font-semibold"
+                          : "hover:border-l-sidebar-primary hover:bg-gradient-to-r hover:from-sidebar-primary/12 hover:to-transparent",
+                        "[&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-white",
                       )}
                     >
                       <Link href={item.url}>
@@ -95,16 +92,16 @@ export function NavMain({
                         tooltip={item.title}
                         isActive={Boolean(itemActive)}
                         className={cn(
-                          "h-9 rounded-lg px-3 text-[13px] font-medium transition-colors duration-150",
+                          "h-9 rounded-lg border-l-[3px] border-transparent px-3 text-[13px] font-medium text-white transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] data-active:text-white hover:text-white",
                           itemActive
-                            ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                            : "text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
-                          "[&_svg:not(.chevron)]:size-4 [&_svg:not(.chevron)]:shrink-0",
+                            ? "border-l-sidebar-primary bg-gradient-to-r from-sidebar-primary/18 to-transparent font-semibold"
+                            : "hover:border-l-sidebar-primary hover:bg-gradient-to-r hover:from-sidebar-primary/12 hover:to-transparent",
+                          "[&_svg:not(.chevron)]:size-4 [&_svg:not(.chevron)]:shrink-0 [&_svg:not(.chevron)]:text-white",
                         )}
                       >
                         {item.icon}
                         <span>{item.title}</span>
-                        <ChevronRightIcon className="chevron ml-auto size-3.5 shrink-0 text-sidebar-foreground/35 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
+                        <ChevronRightIcon className="chevron ml-auto size-3.5 shrink-0 text-white/60 transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
@@ -117,10 +114,8 @@ export function NavMain({
                                 asChild
                                 isActive={subActive}
                                 className={cn(
-                                  "h-8 rounded-md text-[12px] transition-colors duration-150",
-                                  subActive
-                                    ? "font-medium text-sidebar-primary"
-                                    : "text-sidebar-foreground/55 hover:text-sidebar-foreground",
+                                  "h-8 rounded-md text-white transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] data-active:text-white hover:text-white",
+                                  subActive && "font-semibold",
                                 )}
                               >
                                 <Link href={subItem.url}>

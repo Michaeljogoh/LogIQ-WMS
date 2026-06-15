@@ -1,6 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { generateText } from "ai";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { serializeForJson } from "@/lib/serialize-json";
 import { getGeminiModel } from "@/server/ai/client";
 import { parseJsonObject } from "@/server/ai/parse-json-block";
 import { assertTenantScopedSelect } from "@/server/ai/sql-guard";
@@ -55,12 +56,29 @@ export async function runNLQuery(
       ? `\nRestrict to these warehouse ids only: ${opts.warehouseIds.join(", ")}. Use the "warehouseId" column on stock_level, stock_movement, "order", and pick_list.`
       : "";
 
-  const { text } = await generateText({
-    model,
-    system: `${SYSTEM_PROMPT.replaceAll("{accountId}", accountId)}${scope}`,
-    messages: [{ role: "user", content: queryText }],
-    maxOutputTokens: 1024,
-  });
+  let text: string;
+  try {
+    ({ text } = await generateText({
+      model,
+      system: `${SYSTEM_PROMPT.replaceAll("{accountId}", accountId)}${scope}`,
+      messages: [{ role: "user", content: queryText }],
+      maxOutputTokens: 1024,
+      maxRetries: 0,
+    }));
+  } catch (e) {
+    const message = e instanceof Error ? e.message : "Gemini request failed";
+    if (/quota|RESOURCE_EXHAUSTED|rate.?limit/i.test(message)) {
+      throw new TRPCError({
+        code: "TOO_MANY_REQUESTS",
+        message:
+          "Gemini API quota exceeded. Set GEMINI_MODEL=gemini-2.5-flash in .env, enable billing at https://aistudio.google.com/apikey, then restart the dev server. If you already rotated keys, the model (not the key) may have zero free-tier quota.",
+      });
+    }
+    throw new TRPCError({
+      code: "BAD_REQUEST",
+      message,
+    });
+  }
 
   let parsed: {
     sql: string | null;
@@ -85,10 +103,11 @@ export async function runNLQuery(
   }
 
   const safeSql = assertTenantScopedSelect(parsed.sql, accountId);
-  const data = (await db.$queryRawUnsafe(safeSql)) as unknown[];
+  const raw = (await db.$queryRawUnsafe(safeSql)) as unknown[];
+  const rows = Array.isArray(raw) ? raw : [raw];
   return {
     explanation: parsed.explanation,
     chartType: parsed.chartType ?? null,
-    data: Array.isArray(data) ? data : [data],
+    data: serializeForJson(rows),
   };
 }

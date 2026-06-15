@@ -20,10 +20,15 @@ import { tiktokShopConnector } from "./tiktok-shop";
 import { woocommerceConnector } from "./woocommerce";
 
 type Connector = {
-  getOAuthUrl: (redirectUri: string, state: string) => string;
+  getOAuthUrl: (
+    redirectUri: string,
+    state: string,
+    shopDomain?: string,
+  ) => string;
   exchangeCodeForToken: (
     code: string,
     redirectUri: string,
+    shopDomain?: string,
   ) => Promise<Record<string, unknown>>;
   fetchOrders: (credentials: Record<string, unknown>) => Promise<
     Array<{
@@ -72,18 +77,25 @@ export function getIntegrationOAuthUrl(args: {
   type: IntegrationType;
   redirectUri: string;
   state: string;
+  shopDomain?: string;
 }) {
-  return getConnector(args.type).getOAuthUrl(args.redirectUri, args.state);
+  return getConnector(args.type).getOAuthUrl(
+    args.redirectUri,
+    args.state,
+    args.shopDomain,
+  );
 }
 
 export async function exchangeIntegrationCode(args: {
   type: IntegrationType;
   code: string;
   redirectUri: string;
+  shopDomain?: string;
 }) {
   return getConnector(args.type).exchangeCodeForToken(
     args.code,
     args.redirectUri,
+    args.shopDomain,
   );
 }
 

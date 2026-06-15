@@ -1,17 +1,20 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { GitBranch, Route, Zap } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useTRPC } from "@/app/trpc/client";
+import { KpiStatCard } from "@/components/charts/kpi-stat-card";
+import {
+  SettingsPage,
+  SettingsPanel,
+  SettingsPanelBody,
+  SettingsPanelHeader,
+  SettingsTableWrap,
+} from "@/components/settings/settings-page-shell";
+import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -173,38 +176,68 @@ export default function RoutingSettingsPage() {
     });
   };
 
+  const activeRules = orderedRules.filter((r) => r.isActive).length;
+  const merchantScoped = orderedRules.filter((r) => r.merchantId).length;
+
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">
-          Order routing rules
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          Higher priority runs first. Uses destination ZIP proximity (Haversine
-          via US ZIP centroids) when assigning nearest warehouse.
-        </p>
+    <SettingsPage>
+      <PageHeader
+        description="Higher priority runs first. Uses destination ZIP proximity (Haversine via US ZIP centroids) when assigning nearest warehouse."
+        title="Order routing rules"
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <KpiStatCard
+          accent="navy-blue"
+          hint="Rules evaluated on each order"
+          icon={Route}
+          isLoading={rulesQuery.isLoading}
+          label="Total rules"
+          value={orderedRules.length}
+        />
+        <KpiStatCard
+          accent="success"
+          hint="Currently evaluating orders"
+          icon={Zap}
+          isLoading={rulesQuery.isLoading}
+          label="Active rules"
+          value={activeRules}
+        />
+        <KpiStatCard
+          accent="navy-violet"
+          hint="Rules limited to one merchant"
+          icon={GitBranch}
+          isLoading={rulesQuery.isLoading}
+          label="Merchant scoped"
+          value={merchantScoped}
+        />
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-4">
-          <div>
-            <CardTitle>Rules</CardTitle>
-            <CardDescription>
+      <SettingsPanel>
+        <SettingsPanelHeader
+          actions={
+            <Button
+              onClick={() => {
+                openNew();
+                setOpen(true);
+              }}
+              type="button"
+            >
+              Add rule
+            </Button>
+          }
+          description={
+            <>
               Example condition:{" "}
-              <code className="text-xs">
+              <code className="rounded bg-muted px-1 py-0.5 text-xs">
                 [{`{ "field": "destinationState", "operator": "eq", "value": "CA" }`}]
               </code>
-            </CardDescription>
-          </div>
-          <Button
-            type="button"
-            onClick={() => {
-              openNew();
-              setOpen(true);
-            }}
-          >
-            Add rule
-          </Button>
+            </>
+          }
+          icon={Route}
+          title="Rules"
+        />
+        <SettingsPanelBody>
           <Sheet
             open={open}
             onOpenChange={(o) => {
@@ -329,8 +362,7 @@ export default function RoutingSettingsPage() {
               </div>
             </SheetContent>
           </Sheet>
-        </CardHeader>
-        <CardContent>
+          <SettingsTableWrap>
           <Table>
             <TableHeader>
               <TableRow>
@@ -382,7 +414,13 @@ export default function RoutingSettingsPage() {
                   <TableCell className="text-sm text-muted-foreground">
                     {r.merchant?.name ?? "All"}
                   </TableCell>
-                  <TableCell>{r.isActive ? "Yes" : "No"}</TableCell>
+                  <TableCell>
+                    {r.isActive ? (
+                      <Badge variant="success">Active</Badge>
+                    ) : (
+                      <Badge variant="secondary">Inactive</Badge>
+                    )}
+                  </TableCell>
                   <TableCell className="text-right">
                     <Button
                       type="button"
@@ -405,8 +443,9 @@ export default function RoutingSettingsPage() {
               ) : null}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
-    </div>
+          </SettingsTableWrap>
+        </SettingsPanelBody>
+      </SettingsPanel>
+    </SettingsPage>
   );
 }

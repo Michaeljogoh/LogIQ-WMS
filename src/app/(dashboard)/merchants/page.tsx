@@ -20,7 +20,7 @@ import { cn } from "@/lib/utils";
 
 function MerchantCardSkeleton() {
   return (
-    <div className="rounded-xl border bg-card p-5 shadow-sm">
+    <div className="dashboard-panel p-5">
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3">
           <Skeleton className="size-9 rounded-lg" />
@@ -96,7 +96,7 @@ export default function Page() {
             return (
               <div
                 key={merchant.id}
-                className="group rounded-xl border bg-card p-5 shadow-sm transition-shadow hover:shadow-md"
+                className="dashboard-panel group p-5"
               >
                 {/* Header */}
                 <div className="flex items-start justify-between gap-3">

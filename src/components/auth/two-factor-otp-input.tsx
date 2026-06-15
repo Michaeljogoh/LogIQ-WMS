@@ -6,6 +6,13 @@ import {
   InputOTPSeparator,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
+import { cn } from "@/lib/utils";
+
+const OTP_SLOT_CLASS = cn(
+  "size-12 rounded-lg border-2 border-border bg-muted/60 text-lg font-semibold tabular-nums text-foreground shadow-sm",
+  "first:rounded-lg last:rounded-lg",
+  "data-[active=true]:border-primary data-[active=true]:bg-card data-[active=true]:ring-2 data-[active=true]:ring-ring/30",
+);
 
 type TwoFactorOtpInputProps = Readonly<{
   value: string;
@@ -14,36 +21,18 @@ type TwoFactorOtpInputProps = Readonly<{
 
 export function TwoFactorOtpInput({ value, onChange }: TwoFactorOtpInputProps) {
   return (
-    <div className="flex justify-center">
+    <div className="flex justify-center py-1">
       <InputOTP maxLength={6} onChange={onChange} value={value}>
         <InputOTPGroup className="gap-2">
-          <InputOTPSlot
-            className="size-11 rounded-lg border-[#e2e8f0] text-base first:rounded-lg last:rounded-lg"
-            index={0}
-          />
-          <InputOTPSlot
-            className="size-11 rounded-lg border-[#e2e8f0] text-base"
-            index={1}
-          />
-          <InputOTPSlot
-            className="size-11 rounded-lg border-[#e2e8f0] text-base"
-            index={2}
-          />
+          <InputOTPSlot className={OTP_SLOT_CLASS} index={0} />
+          <InputOTPSlot className={OTP_SLOT_CLASS} index={1} />
+          <InputOTPSlot className={OTP_SLOT_CLASS} index={2} />
         </InputOTPGroup>
-        <InputOTPSeparator className="text-[#cbd5e1]" />
+        <InputOTPSeparator className="mx-1 text-muted-foreground [&_svg]:size-5 [&_svg]:stroke-[2.5]" />
         <InputOTPGroup className="gap-2">
-          <InputOTPSlot
-            className="size-11 rounded-lg border-[#e2e8f0] text-base first:rounded-lg last:rounded-lg"
-            index={3}
-          />
-          <InputOTPSlot
-            className="size-11 rounded-lg border-[#e2e8f0] text-base"
-            index={4}
-          />
-          <InputOTPSlot
-            className="size-11 rounded-lg border-[#e2e8f0] text-base"
-            index={5}
-          />
+          <InputOTPSlot className={OTP_SLOT_CLASS} index={3} />
+          <InputOTPSlot className={OTP_SLOT_CLASS} index={4} />
+          <InputOTPSlot className={OTP_SLOT_CLASS} index={5} />
         </InputOTPGroup>
       </InputOTP>
     </div>

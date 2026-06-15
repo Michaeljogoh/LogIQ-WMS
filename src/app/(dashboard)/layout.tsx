@@ -107,8 +107,8 @@ export default async function DashboardLayout({
             supportLevel={platformActiveAccount.supportLevel}
           />
         ) : null}
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-background/80 px-4 backdrop-blur-sm transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
-          <SidebarTrigger className="-ml-1 size-8 text-muted-foreground hover:text-foreground" />
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border/60 bg-background/90 px-4 shadow-sm backdrop-blur-md transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
+          <SidebarTrigger className="-ml-1 size-8 text-muted-foreground transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)] hover:scale-105 hover:text-primary" />
           <Separator
             orientation="vertical"
             className="mr-2 data-vertical:h-4 data-vertical:self-auto"
@@ -119,7 +119,9 @@ export default async function DashboardLayout({
             <NotificationBell />
           </div>
         </header>
-        <div className="flex flex-1 flex-col">{children}</div>
+        <div className="dashboard-content-canvas flex flex-1 flex-col">
+          {children}
+        </div>
       </SidebarInset>
     </SidebarProvider>
   );

@@ -1,6 +1,18 @@
 "use client";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
+import {
+  BarChart3,
+  CalendarRange,
+  Clock,
+  LineChart as LineChartIcon,
+  Package,
+  PackageCheck,
+  SlidersHorizontal,
+  Store,
+  TrendingUp,
+  Truck,
+} from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   Bar,
@@ -15,9 +27,17 @@ import {
   YAxis,
 } from "recharts";
 import { useTRPC } from "@/app/trpc/client";
+import { KpiStatCard } from "@/components/charts/kpi-stat-card";
+import {
+  SettingsPage,
+  SettingsPanel,
+  SettingsPanelBody,
+  SettingsPanelHeader,
+  SettingsTableWrap,
+} from "@/components/settings/settings-page-shell";
+import { PageHeader } from "@/components/shared/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -77,6 +97,7 @@ export default function Page() {
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10),
   );
   const [to, setTo] = useState(new Date().toISOString().slice(0, 10));
+  const [activeTab, setActiveTab] = useState("operations");
   const [dimensions, setDimensions] = useState<
     Array<"DAY" | "MERCHANT" | "CARRIER" | "WAREHOUSE">
   >(["DAY", "MERCHANT"]);
@@ -157,131 +178,190 @@ export default function Page() {
     }));
   }, [customReportQuery.data?.rows, chartMetric]);
 
+  const showDateRange = ["merchant", "carrier", "receiving", "custom"].includes(
+    activeTab,
+  );
+
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex flex-wrap items-end gap-3">
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">From</p>
-          <Input
-            type="date"
-            value={from}
-            onChange={(event) => setFrom(event.target.value)}
-          />
-        </div>
-        <div className="space-y-1">
-          <p className="text-xs text-muted-foreground">To</p>
-          <Input
-            type="date"
-            value={to}
-            onChange={(event) => setTo(event.target.value)}
-          />
-        </div>
-      </div>
+    <SettingsPage>
+      <PageHeader
+        description="Operations, inventory, carrier, receiving, and custom reporting across your network."
+        title="Analytics"
+      />
 
-      <Tabs defaultValue="operations" className="space-y-4">
-        <TabsList className="flex flex-wrap">
-          <TabsTrigger value="operations">Operations</TabsTrigger>
-          <TabsTrigger value="inventory">Inventory Health</TabsTrigger>
-          <TabsTrigger value="merchant">Merchant Performance</TabsTrigger>
-          <TabsTrigger value="carrier">Carrier Cost</TabsTrigger>
-          <TabsTrigger value="receiving">Receiving Report</TabsTrigger>
-          <TabsTrigger value="forecast">Capacity Forecast</TabsTrigger>
-          <TabsTrigger value="custom">Custom Report</TabsTrigger>
-        </TabsList>
+      <Tabs
+        className="analytics-report-tabs space-y-6"
+        onValueChange={setActiveTab}
+        value={activeTab}
+      >
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <TabsList
+            aria-label="Analytics reports"
+            className="h-auto w-full flex-wrap justify-start gap-2 xl:flex-1"
+          >
+          <TabsTrigger
+            className="analytics-tab analytics-tab--operations"
+            value="operations"
+          >
+            <BarChart3 aria-hidden />
+            Operations
+          </TabsTrigger>
+          <TabsTrigger
+            className="analytics-tab analytics-tab--inventory"
+            value="inventory"
+          >
+            <Package aria-hidden />
+            Inventory Health
+          </TabsTrigger>
+          <TabsTrigger
+            className="analytics-tab analytics-tab--merchant"
+            value="merchant"
+          >
+            <Store aria-hidden />
+            Merchant Performance
+          </TabsTrigger>
+          <TabsTrigger
+            className="analytics-tab analytics-tab--carrier"
+            value="carrier"
+          >
+            <Truck aria-hidden />
+            Carrier Cost
+          </TabsTrigger>
+          <TabsTrigger
+            className="analytics-tab analytics-tab--receiving"
+            value="receiving"
+          >
+            <PackageCheck aria-hidden />
+            Receiving Report
+          </TabsTrigger>
+          <TabsTrigger
+            className="analytics-tab analytics-tab--forecast"
+            value="forecast"
+          >
+            <LineChartIcon aria-hidden />
+            Capacity Forecast
+          </TabsTrigger>
+          <TabsTrigger
+            className="analytics-tab analytics-tab--custom"
+            value="custom"
+          >
+            <SlidersHorizontal aria-hidden />
+            Custom Report
+          </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="operations">
-          <div className="grid gap-4 md:grid-cols-5">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Orders Today</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {operationsQuery.data?.ordersToday ?? 0}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Fulfillment Rate</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {operationsQuery.data?.fulfillmentRatePct ?? 0}%
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Avg Pick Time</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {operationsQuery.data?.avgPickTimeMins ?? 0}m
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">SLA Compliance (7d)</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {operationsQuery.data?.slaCompliancePct7d ?? 0}%
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Pending Orders</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {operationsQuery.data?.pendingOrders ?? 0}
-              </CardContent>
-            </Card>
+          {showDateRange ? (
+            <div className="analytics-date-range flex shrink-0 flex-wrap items-center gap-2 xl:justify-end">
+              <CalendarRange
+                className="size-4 text-muted-foreground"
+                aria-hidden
+              />
+              <Input
+                aria-label="From date"
+                className="h-9 w-36 bg-background"
+                onChange={(event) => setFrom(event.target.value)}
+                type="date"
+                value={from}
+              />
+              <span className="text-xs font-medium text-muted-foreground">
+                to
+              </span>
+              <Input
+                aria-label="To date"
+                className="h-9 w-36 bg-background"
+                onChange={(event) => setTo(event.target.value)}
+                type="date"
+                value={to}
+              />
+            </div>
+          ) : null}
+        </div>
+
+        <TabsContent className="space-y-4" value="operations">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <KpiStatCard
+              accent="navy-blue"
+              hint="Orders created today"
+              icon={Package}
+              isLoading={operationsQuery.isLoading}
+              label="Orders today"
+              value={operationsQuery.data?.ordersToday ?? 0}
+            />
+            <KpiStatCard
+              accent="success"
+              hint="Shipped vs total"
+              icon={TrendingUp}
+              isLoading={operationsQuery.isLoading}
+              label="Fulfillment rate"
+              value={`${operationsQuery.data?.fulfillmentRatePct ?? 0}%`}
+            />
+            <KpiStatCard
+              accent="navy-teal"
+              hint="Average pick duration"
+              icon={Clock}
+              isLoading={operationsQuery.isLoading}
+              label="Avg pick time"
+              value={`${operationsQuery.data?.avgPickTimeMins ?? 0}m`}
+            />
+            <KpiStatCard
+              accent="navy-violet"
+              hint="Last 7 days"
+              icon={BarChart3}
+              isLoading={operationsQuery.isLoading}
+              label="SLA compliance"
+              value={`${operationsQuery.data?.slaCompliancePct7d ?? 0}%`}
+            />
+            <KpiStatCard
+              accent="warning"
+              hint="Awaiting fulfillment"
+              icon={Package}
+              isLoading={operationsQuery.isLoading}
+              label="Pending orders"
+              value={operationsQuery.data?.pendingOrders ?? 0}
+            />
           </div>
         </TabsContent>
 
-        <TabsContent value="inventory">
-          <div className="grid gap-4 lg:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle>Total SKUs</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {inventoryQuery.data?.totalSkus ?? 0}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Total Units</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {inventoryQuery.data?.totalUnits ?? 0}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Inventory Value</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {formatCents(inventoryQuery.data?.inventoryValueCents ?? 0)}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Low Stock Count</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {inventoryQuery.data?.lowStockCount ?? 0}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>Dead Stock Count</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {inventoryQuery.data?.deadStockCount ?? 0}
-              </CardContent>
-            </Card>
+        <TabsContent className="space-y-4" value="inventory">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+            <KpiStatCard
+              accent="navy-blue"
+              isLoading={inventoryQuery.isLoading}
+              label="Total SKUs"
+              value={inventoryQuery.data?.totalSkus ?? 0}
+            />
+            <KpiStatCard
+              accent="success"
+              isLoading={inventoryQuery.isLoading}
+              label="Total units"
+              value={inventoryQuery.data?.totalUnits ?? 0}
+            />
+            <KpiStatCard
+              accent="navy-violet"
+              isLoading={inventoryQuery.isLoading}
+              label="Inventory value"
+              value={formatCents(inventoryQuery.data?.inventoryValueCents ?? 0)}
+            />
+            <KpiStatCard
+              accent="warning"
+              isLoading={inventoryQuery.isLoading}
+              label="Low stock"
+              value={inventoryQuery.data?.lowStockCount ?? 0}
+            />
+            <KpiStatCard
+              accent={
+                (inventoryQuery.data?.deadStockCount ?? 0) > 0
+                  ? "warning"
+                  : "navy-teal"
+              }
+              isLoading={inventoryQuery.isLoading}
+              label="Dead stock"
+              value={inventoryQuery.data?.deadStockCount ?? 0}
+            />
           </div>
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle>Top 10 Movers (30d)</CardTitle>
-            </CardHeader>
-            <CardContent className="h-80">
+          <SettingsPanel className="mt-4">
+            <SettingsPanelHeader title="Top 10 movers (30d)" />
+            <SettingsPanelBody className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={inventoryQuery.data?.top10Movers ?? []}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -291,16 +371,18 @@ export default function Page() {
                   <Bar dataKey="movedUnits" fill="#2563eb" />
                 </BarChart>
               </ResponsiveContainer>
-            </CardContent>
-          </Card>
+            </SettingsPanelBody>
+          </SettingsPanel>
         </TabsContent>
 
-        <TabsContent value="merchant">
-          <Card>
-            <CardHeader>
-              <CardTitle>Merchant Performance</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <TabsContent className="space-y-4" value="merchant">
+          <SettingsPanel>
+            <SettingsPanelHeader
+              icon={TrendingUp}
+              title="Merchant performance"
+            />
+            <SettingsPanelBody>
+              <SettingsTableWrap>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -314,7 +396,7 @@ export default function Page() {
                 </TableHeader>
                 <TableBody>
                   {merchantPerformanceQuery.data?.map((row) => (
-                    <TableRow key={row.merchantId}>
+                    <TableRow className="logiq-table-row" key={row.merchantId}>
                       <TableCell>{row.merchantName}</TableCell>
                       <TableCell>{row.orderCount}</TableCell>
                       <TableCell>{row.unitsShipped}</TableCell>
@@ -333,16 +415,16 @@ export default function Page() {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+              </SettingsTableWrap>
+            </SettingsPanelBody>
+          </SettingsPanel>
         </TabsContent>
 
-        <TabsContent value="carrier">
-          <Card>
-            <CardHeader>
-              <CardTitle>Carrier Cost Analysis</CardTitle>
-            </CardHeader>
-            <CardContent>
+        <TabsContent className="space-y-4" value="carrier">
+          <SettingsPanel>
+            <SettingsPanelHeader icon={Truck} title="Carrier cost analysis" />
+            <SettingsPanelBody>
+              <SettingsTableWrap>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -356,7 +438,7 @@ export default function Page() {
                 </TableHeader>
                 <TableBody>
                   {carrierQuery.data?.map((row) => (
-                    <TableRow key={row.carrier}>
+                    <TableRow className="logiq-table-row" key={row.carrier}>
                       <TableCell>{row.carrier}</TableCell>
                       <TableCell>{row.shipmentCount}</TableCell>
                       <TableCell>{formatCents(row.totalCostCents)}</TableCell>
@@ -367,42 +449,36 @@ export default function Page() {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+              </SettingsTableWrap>
+            </SettingsPanelBody>
+          </SettingsPanel>
         </TabsContent>
 
-        <TabsContent value="receiving">
-          <div className="grid gap-4 md:grid-cols-3">
-            <Card>
-              <CardHeader>
-                <CardTitle>Units Received</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {receivingQuery.data?.totalUnitsReceived ?? 0}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>PO Count</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {receivingQuery.data?.uniquePoCount ?? 0}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader>
-                <CardTitle>On-time Rate</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">
-                {receivingQuery.data?.onTimeRatePct ?? 0}%
-              </CardContent>
-            </Card>
+        <TabsContent className="space-y-4" value="receiving">
+          <div className="grid gap-4 sm:grid-cols-3">
+            <KpiStatCard
+              accent="success"
+              isLoading={receivingQuery.isLoading}
+              label="Units received"
+              value={receivingQuery.data?.totalUnitsReceived ?? 0}
+            />
+            <KpiStatCard
+              accent="navy-blue"
+              isLoading={receivingQuery.isLoading}
+              label="PO count"
+              value={receivingQuery.data?.uniquePoCount ?? 0}
+            />
+            <KpiStatCard
+              accent="navy-teal"
+              isLoading={receivingQuery.isLoading}
+              label="On-time rate"
+              value={`${receivingQuery.data?.onTimeRatePct ?? 0}%`}
+            />
           </div>
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle>Receiving Lines</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <SettingsPanel className="mt-4">
+            <SettingsPanelHeader title="Receiving lines" />
+            <SettingsPanelBody>
+              <SettingsTableWrap>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -416,7 +492,7 @@ export default function Page() {
                 </TableHeader>
                 <TableBody>
                   {receivingQuery.data?.rows.map((row) => (
-                    <TableRow key={row.id}>
+                    <TableRow className="logiq-table-row" key={row.id}>
                       <TableCell>{row.poNumber}</TableCell>
                       <TableCell>{row.sku}</TableCell>
                       <TableCell>{row.productName}</TableCell>
@@ -429,16 +505,15 @@ export default function Page() {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+              </SettingsTableWrap>
+            </SettingsPanelBody>
+          </SettingsPanel>
         </TabsContent>
 
-        <TabsContent value="forecast">
-          <Card>
-            <CardHeader>
-              <CardTitle>7-Day Capacity Forecast</CardTitle>
-            </CardHeader>
-            <CardContent className="h-80">
+        <TabsContent className="space-y-4" value="forecast">
+          <SettingsPanel>
+            <SettingsPanelHeader title="7-day capacity forecast" />
+            <SettingsPanelBody className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={forecastQuery.data ?? []}>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -455,36 +530,43 @@ export default function Page() {
                   <Line type="monotone" dataKey="upperBound" stroke="#dc2626" />
                 </LineChart>
               </ResponsiveContainer>
-            </CardContent>
-          </Card>
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle>Recommended Staffing</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-3 md:grid-cols-3 xl:grid-cols-4">
+            </SettingsPanelBody>
+          </SettingsPanel>
+          <SettingsPanel className="mt-4">
+            <SettingsPanelHeader title="Recommended staffing" />
+            <SettingsPanelBody>
+              <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {forecastQuery.data?.map((row) => (
-                  <div key={row.date} className="rounded-md border p-3">
-                    <p className="text-sm font-medium">{row.date}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Predicted: {row.predictedOrders}
-                    </p>
-                    <p className="text-lg font-semibold">
-                      {row.recommendedStaff} staff
-                    </p>
-                  </div>
+                  <article className="logiq-capacity-day-card" key={row.date}>
+                    <header className="logiq-capacity-day-card__header">
+                      <time
+                        className="logiq-capacity-day-card__date"
+                        dateTime={row.date}
+                      >
+                        {row.date}
+                      </time>
+                    </header>
+                    <dl className="logiq-capacity-day-card__metrics">
+                      <div className="logiq-capacity-day-card__metric">
+                        <dt>Predicted orders</dt>
+                        <dd className="tabular-nums">{row.predictedOrders}</dd>
+                      </div>
+                      <div className="logiq-capacity-day-card__metric logiq-capacity-day-card__metric--staff">
+                        <dt>Suggested staff</dt>
+                        <dd className="tabular-nums">{row.recommendedStaff}</dd>
+                      </div>
+                    </dl>
+                  </article>
                 ))}
               </div>
-            </CardContent>
-          </Card>
+            </SettingsPanelBody>
+          </SettingsPanel>
         </TabsContent>
 
-        <TabsContent value="custom">
-          <Card>
-            <CardHeader>
-              <CardTitle>Custom Report Builder</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+        <TabsContent className="space-y-4" value="custom">
+          <SettingsPanel>
+            <SettingsPanelHeader title="Custom report builder" />
+            <SettingsPanelBody className="space-y-4">
               <div className="flex flex-wrap gap-2">
                 {(["DAY", "MERCHANT", "CARRIER", "WAREHOUSE"] as const).map(
                   (dimension) => (
@@ -550,14 +632,12 @@ export default function Page() {
                   Export CSV + PDF
                 </Button>
               </div>
-            </CardContent>
-          </Card>
+            </SettingsPanelBody>
+          </SettingsPanel>
 
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle>Custom Chart</CardTitle>
-            </CardHeader>
-            <CardContent className="h-80">
+          <SettingsPanel className="mt-4">
+            <SettingsPanelHeader title="Custom chart" />
+            <SettingsPanelBody className="h-80">
               <ResponsiveContainer width="100%" height="100%">
                 {customReportQuery.data?.chartType === "line" ? (
                   <LineChart data={customChartRows}>
@@ -577,14 +657,13 @@ export default function Page() {
                   </BarChart>
                 )}
               </ResponsiveContainer>
-            </CardContent>
-          </Card>
+            </SettingsPanelBody>
+          </SettingsPanel>
 
-          <Card className="mt-4">
-            <CardHeader>
-              <CardTitle>Custom Report Table</CardTitle>
-            </CardHeader>
-            <CardContent>
+          <SettingsPanel className="mt-4">
+            <SettingsPanelHeader title="Custom report table" />
+            <SettingsPanelBody>
+              <SettingsTableWrap>
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -608,10 +687,11 @@ export default function Page() {
                   ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
+              </SettingsTableWrap>
+            </SettingsPanelBody>
+          </SettingsPanel>
         </TabsContent>
       </Tabs>
-    </div>
+    </SettingsPage>
   );
 }

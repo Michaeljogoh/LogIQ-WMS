@@ -9,6 +9,7 @@ import {
   getIntegrationOAuthUrl,
   syncIntegrationOrders,
 } from "@/server/integrations/hub";
+import { normalizeShopifyShopDomain } from "@/server/integrations/shopify";
 
 const integrationTypeEnum = z.enum([
   "SHOPIFY",
@@ -59,6 +60,7 @@ export const integrationRouter = createTRPCRouter({
     .input(
       z.object({
         type: integrationTypeEnum,
+        shopDomain: z.string().optional(),
       }),
     )
     .query(async ({ ctx, input }) => {
@@ -69,19 +71,31 @@ export const integrationRouter = createTRPCRouter({
           message: "Merchant context is required.",
         });
       }
-      const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+      let shopDomain: string | undefined;
+      if (input.type === "SHOPIFY") {
+        if (!input.shopDomain?.trim()) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Shopify shop domain is required.",
+          });
+        }
+        shopDomain = normalizeShopifyShopDomain(input.shopDomain);
+      }
+      const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3008";
       const callback = `${base}/portal/settings/integrations/${input.type.toLowerCase().replace("_", "-")}/connect`;
       const state = Buffer.from(
         JSON.stringify({
           accountId,
           merchantId: ctx.merchantId,
           type: input.type,
+          ...(shopDomain ? { shopDomain } : {}),
         }),
       ).toString("base64url");
       const authUrl = getIntegrationOAuthUrl({
         type: input.type,
         redirectUri: callback,
         state,
+        shopDomain,
       });
       return { authUrl };
     }),
@@ -94,6 +108,7 @@ export const integrationRouter = createTRPCRouter({
       z.object({
         type: integrationTypeEnum,
         code: z.string().min(1),
+        shopDomain: z.string().optional(),
         manualCredentials: z.record(z.string(), z.string()).optional(),
       }),
     )
@@ -105,7 +120,17 @@ export const integrationRouter = createTRPCRouter({
           message: "Merchant context is required.",
         });
       }
-      const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";
+      let shopDomain: string | undefined;
+      if (input.type === "SHOPIFY") {
+        if (!input.shopDomain?.trim()) {
+          throw new TRPCError({
+            code: "BAD_REQUEST",
+            message: "Shopify shop domain is required.",
+          });
+        }
+        shopDomain = normalizeShopifyShopDomain(input.shopDomain);
+      }
+      const base = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3008";
       const callback = `${base}/portal/settings/integrations/${input.type.toLowerCase().replace("_", "-")}/connect`;
       const exchanged =
         input.type === "WOOCOMMERCE" && input.manualCredentials
@@ -114,7 +139,13 @@ export const integrationRouter = createTRPCRouter({
               type: input.type,
               code: input.code,
               redirectUri: callback,
+              shopDomain,
             });
+      const metadata = {
+        orderCount: 0,
+        hasWebhook: input.type !== "ETSY" && input.type !== "EBAY",
+        ...(shopDomain ? { shopDomain } : {}),
+      };
       return ctx.db.integration.upsert({
         where: {
           accountId_merchantId_type: {
@@ -129,10 +160,7 @@ export const integrationRouter = createTRPCRouter({
             ...exchanged,
             connectedAt: new Date().toISOString(),
           }),
-          metadata: {
-            orderCount: 0,
-            hasWebhook: input.type !== "ETSY" && input.type !== "EBAY",
-          },
+          metadata,
           lastSyncAt: new Date(),
         },
         create: {
@@ -144,10 +172,7 @@ export const integrationRouter = createTRPCRouter({
             ...exchanged,
             connectedAt: new Date().toISOString(),
           }),
-          metadata: {
-            orderCount: 0,
-            hasWebhook: input.type !== "ETSY" && input.type !== "EBAY",
-          },
+          metadata,
           lastSyncAt: new Date(),
         },
       });

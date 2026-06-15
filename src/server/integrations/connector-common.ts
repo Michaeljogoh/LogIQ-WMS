@@ -15,10 +15,15 @@ export type ConnectorOrderPayload = {
 };
 
 export type ConnectorClient = {
-  getOAuthUrl: (redirectUri: string, state: string) => string;
+  getOAuthUrl: (
+    redirectUri: string,
+    state: string,
+    shopDomain?: string,
+  ) => string;
   exchangeCodeForToken: (
     code: string,
     redirectUri: string,
+    shopDomain?: string,
   ) => Promise<Record<string, unknown>>;
   fetchOrders: (
     credentials: Record<string, unknown>,

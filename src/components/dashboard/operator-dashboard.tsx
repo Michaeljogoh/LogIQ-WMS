@@ -48,7 +48,7 @@ function SetupStep(
   }>,
 ) {
   return (
-    <div className="flex items-start gap-3 rounded-lg border border-border/60 p-4">
+    <div className="dashboard-form-section flex items-start gap-3">
       {props.done ? (
         <CheckCircle2Icon className="mt-0.5 size-5 shrink-0 text-emerald-600" />
       ) : (
@@ -218,9 +218,9 @@ export function OperatorDashboard() {
           <DashboardBarChart data={charts?.byWarehouse ?? []} />
         </ChartCard>
 
-        <Card>
+        <Card className="dashboard-chart-card dashboard-surface dashboard-surface-hover ring-0">
           <CardHeader>
-            <CardTitle className="text-base">
+            <CardTitle className="text-base font-bold">
               Top merchants (open orders)
             </CardTitle>
             <CardDescription>
@@ -267,9 +267,9 @@ export function OperatorDashboard() {
 
       {isAccountOwner ? (
         <div className="grid gap-6 lg:grid-cols-2">
-          <Card>
+          <Card className="dashboard-chart-card dashboard-surface dashboard-surface-hover ring-0">
             <CardHeader>
-              <CardTitle className="text-base">Workspace setup</CardTitle>
+              <CardTitle className="text-base font-bold">Workspace setup</CardTitle>
               <CardDescription>
                 Complete these steps to run end-to-end flows as a 3PL account
                 owner.
@@ -312,21 +312,21 @@ export function OperatorDashboard() {
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="dashboard-chart-card dashboard-surface dashboard-surface-hover ring-0">
             <CardHeader>
-              <CardTitle className="text-base">Inventory snapshot</CardTitle>
+              <CardTitle className="text-base font-bold">Inventory snapshot</CardTitle>
               <CardDescription>
                 Live health metrics from your catalog
               </CardDescription>
             </CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-2">
-              <div className="rounded-lg border p-3">
+              <div className="dashboard-form-section rounded-lg p-3">
                 <p className="text-xs text-muted-foreground">Active SKUs</p>
                 <p className="text-2xl font-semibold tabular-nums">
                   {inventoryQuery.isLoading ? "—" : (inventory?.totalSkus ?? 0)}
                 </p>
               </div>
-              <div className="rounded-lg border p-3">
+              <div className="dashboard-form-section rounded-lg p-3">
                 <p className="text-xs text-muted-foreground">Units on hand</p>
                 <p className="text-2xl font-semibold tabular-nums">
                   {inventoryQuery.isLoading
@@ -334,7 +334,7 @@ export function OperatorDashboard() {
                     : (inventory?.totalUnits ?? 0)}
                 </p>
               </div>
-              <div className="rounded-lg border p-3">
+              <div className="dashboard-form-section rounded-lg p-3">
                 <p className="text-xs text-muted-foreground">
                   Top movers (30d)
                 </p>
@@ -344,7 +344,7 @@ export function OperatorDashboard() {
                     : (inventory?.top10Movers?.length ?? 0)}
                 </p>
               </div>
-              <div className="rounded-lg border p-3">
+              <div className="dashboard-form-section rounded-lg p-3">
                 <p className="text-xs text-muted-foreground">Dead stock</p>
                 <p className="text-2xl font-semibold tabular-nums">
                   {inventoryQuery.isLoading

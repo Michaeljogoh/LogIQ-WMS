@@ -1,6 +1,7 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Bot, Lightbulb, Sparkles, TrendingUp, Warehouse } from "lucide-react";
 import { useMemo, useState } from "react";
 import {
   Bar,
@@ -12,13 +13,20 @@ import {
   YAxis,
 } from "recharts";
 import { useTRPC } from "@/app/trpc/client";
-import { useOperatorRole } from "@/hooks/use-operator-role";
+import { KpiStatCard } from "@/components/charts/kpi-stat-card";
 import { CapacityForecastChart } from "@/components/logiq/capacity-forecast-chart";
 import { CarrierScorecardTable } from "@/components/logiq/carrier-scorecard-table";
 import { InsightFeed } from "@/components/logiq/insight-feed";
 import { StockForecastTable } from "@/components/logiq/stock-forecast-table";
+import {
+  SettingsFilterBar,
+  SettingsPage,
+  SettingsPanel,
+  SettingsPanelBody,
+  SettingsPanelHeader,
+} from "@/components/settings/settings-page-shell";
+import { PageHeader } from "@/components/shared/page-header";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   ChartContainer,
   ChartTooltip,
@@ -33,6 +41,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useOperatorRole } from "@/hooks/use-operator-role";
 
 const SUGGESTIONS = [
   "Which merchant had the most orders last week?",
@@ -119,70 +128,116 @@ export function LogiqHub() {
     (k) => typeof firstChartRow?.[k] === "number",
   );
 
+  const insightCount = insightsQuery.data?.items.length ?? 0;
+  const stockForecastRows = (stockForecastQuery.data ?? []) as Array<{
+    stockoutRisk: number;
+  }>;
+  const stockAlertCount = stockForecastRows.reduce(
+    (count, row) => count + (row.stockoutRisk >= 0.33 ? 1 : 0),
+    0,
+  );
+  const carrierCount = scorecardsQuery.data?.length ?? 0;
+
   return (
-    <div className="space-y-8 p-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-lg font-semibold tracking-tight">LogIQ</h1>
-          <p className="text-sm text-muted-foreground">
-            Natural language queries, operational insights, carrier scorecards,
-            and capacity forecasts.
-          </p>
-        </div>
-        {canRunJobs ? (
-          <Button
-            type="button"
-            variant="secondary"
-            className="min-h-11 shrink-0"
-            disabled={runJobsMut.isPending}
-            onClick={() =>
-              runJobsMut.mutate({
-                jobs: [
-                  "stockout",
-                  "overstock",
-                  "carrierScorecard",
-                  "capacity",
-                  "pickRate",
-                ],
-              })
-            }
-          >
-            {runJobsMut.isPending ? "Running…" : "Run intelligence scans"}
-          </Button>
-        ) : null}
+    <SettingsPage>
+      <PageHeader
+        actions={
+          canRunJobs ? (
+            <Button
+              className="min-h-11 shrink-0"
+              disabled={runJobsMut.isPending}
+              onClick={() =>
+                runJobsMut.mutate({
+                  jobs: [
+                    "stockout",
+                    "overstock",
+                    "carrierScorecard",
+                    "capacity",
+                    "pickRate",
+                  ],
+                })
+              }
+              type="button"
+              variant="secondary"
+            >
+              {runJobsMut.isPending ? "Running…" : "Run intelligence scans"}
+            </Button>
+          ) : undefined
+        }
+        description="Natural language queries, operational insights, carrier scorecards, and capacity forecasts."
+        title="LogIQ"
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <KpiStatCard
+          accent="navy-blue"
+          hint="AI-generated recommendations"
+          icon={Lightbulb}
+          isLoading={insightsQuery.isLoading}
+          label="Active insights"
+          value={insightCount}
+        />
+        <KpiStatCard
+          accent={stockAlertCount > 0 ? "warning" : "success"}
+          hint="Stockout risk within 14 days"
+          icon={TrendingUp}
+          isLoading={stockForecastQuery.isLoading}
+          label="Stock alerts"
+          value={stockAlertCount}
+        />
+        <KpiStatCard
+          accent="navy-violet"
+          hint="Carrier performance rows"
+          icon={Sparkles}
+          isLoading={scorecardsQuery.isLoading}
+          label="Carrier scorecards"
+          value={carrierCount}
+        />
+        <KpiStatCard
+          accent="navy-teal"
+          hint="Capacity forecast sites"
+          icon={Warehouse}
+          isLoading={warehousesQuery.isLoading}
+          label="Warehouses"
+          value={warehouses.length}
+        />
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Ask LogIQ</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {SUGGESTIONS.map((s) => (
-              <Button
-                key={s}
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-auto min-h-11 whitespace-normal py-2 text-left text-xs"
-                onClick={() => setQ(s)}
-              >
-                {s}
-              </Button>
-            ))}
-          </div>
+      <SettingsPanel>
+        <SettingsPanelHeader
+          description="Ask questions in plain language about orders, inventory, and shipments."
+          icon={Bot}
+          title="Ask LogIQ"
+        />
+        <SettingsPanelBody className="space-y-4">
+          <SettingsFilterBar>
+            <div className="flex flex-wrap gap-2">
+              {SUGGESTIONS.map((s) => (
+                <Button
+                  className="h-auto min-h-11 whitespace-normal py-2 text-left text-xs"
+                  key={s}
+                  onClick={() => setQ(s)}
+                  size="sm"
+                  type="button"
+                  variant="outline"
+                >
+                  {s}
+                </Button>
+              ))}
+            </div>
+          </SettingsFilterBar>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Input
-              value={q}
+              className="min-h-11"
               onChange={(e) => setQ(e.target.value)}
               placeholder="Ask a question about your operations…"
-              className="min-h-11"
+              value={q}
             />
             <Button
-              type="button"
               className="min-h-11"
               disabled={!q.trim() || queryMut.isPending}
               onClick={() => queryMut.mutate({ text: q.trim() })}
+              type="button"
             >
               {queryMut.isPending ? "Thinking…" : "Run query"}
             </Button>
@@ -200,10 +255,10 @@ export function LogiqHub() {
           queryMut.data?.chartType === "bar" &&
           numericKeys[0] ? (
             <ChartContainer
+              className="h-64 w-full"
               config={{
                 a: { label: numericKeys[0], color: "var(--chart-1)" },
               }}
-              className="h-64 w-full"
             >
               <BarChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -223,10 +278,10 @@ export function LogiqHub() {
           queryMut.data?.chartType === "line" &&
           numericKeys[0] ? (
             <ChartContainer
+              className="h-64 w-full"
               config={{
                 a: { label: numericKeys[0], color: "var(--chart-1)" },
               }}
-              className="h-64 w-full"
             >
               <LineChart data={chartData}>
                 <CartesianGrid strokeDasharray="3 3" />
@@ -234,11 +289,11 @@ export function LogiqHub() {
                 <YAxis />
                 <ChartTooltip content={<ChartTooltipContent />} />
                 <Line
-                  type="monotone"
                   dataKey={numericKeys[0]}
+                  dot={false}
                   stroke="var(--color-a)"
                   strokeWidth={2}
-                  dot={false}
+                  type="monotone"
                 />
               </LineChart>
             </ChartContainer>
@@ -246,12 +301,12 @@ export function LogiqHub() {
 
           {chartData.length > 0 &&
           (!queryMut.data?.chartType || queryMut.data.chartType === "table") ? (
-            <div className="overflow-x-auto rounded-md border text-sm">
+            <div className="settings-table-wrap overflow-x-auto text-sm">
               <table className="w-full border-collapse">
                 <thead>
                   <tr className="border-b bg-muted/50">
                     {chartKeys.map((k) => (
-                      <th key={k} className="px-3 py-2 text-left font-medium">
+                      <th className="px-3 py-2 text-left font-medium" key={k}>
                         {k}
                       </th>
                     ))}
@@ -259,9 +314,9 @@ export function LogiqHub() {
                 </thead>
                 <tbody>
                   {chartData.map((row) => (
-                    <tr key={String(row.__i)} className="border-b">
+                    <tr className="border-b" key={String(row.__i)}>
                       {chartKeys.map((k) => (
-                        <td key={k} className="px-3 py-2">
+                        <td className="px-3 py-2" key={k}>
                           {String((row as Record<string, unknown>)[k] ?? "")}
                         </td>
                       ))}
@@ -271,35 +326,36 @@ export function LogiqHub() {
               </table>
             </div>
           ) : null}
-        </CardContent>
-      </Card>
+        </SettingsPanelBody>
+      </SettingsPanel>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <InsightFeed
-          items={insightsQuery.data?.items ?? []}
-          isLoading={insightsQuery.isLoading}
-        />
-        <StockForecastTable
-          rows={stockForecastQuery.data ?? []}
-          isLoading={stockForecastQuery.isLoading}
-        />
-      </div>
-
-      <CarrierScorecardTable
-        rows={scorecardsQuery.data ?? []}
-        isLoading={scorecardsQuery.isLoading}
+      <InsightFeed
+        isLoading={insightsQuery.isLoading}
+        items={insightsQuery.data?.items ?? []}
       />
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Capacity forecast</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
+      <StockForecastTable
+        isLoading={stockForecastQuery.isLoading}
+        rows={stockForecastQuery.data ?? []}
+      />
+
+      <CarrierScorecardTable
+        isLoading={scorecardsQuery.isLoading}
+        rows={scorecardsQuery.data ?? []}
+      />
+
+      <SettingsPanel>
+        <SettingsPanelHeader
+          description="Predicted order volume and recommended staffing by warehouse."
+          icon={Warehouse}
+          title="Capacity forecast"
+        />
+        <SettingsPanelBody className="space-y-4">
           <div className="flex max-w-sm flex-col gap-2">
             <Label>Warehouse</Label>
             <Select
-              value={effectiveWh || undefined}
               onValueChange={(v) => setWarehouseId(v)}
+              value={effectiveWh || undefined}
             >
               <SelectTrigger className="min-h-11">
                 <SelectValue placeholder="Select warehouse" />
@@ -317,8 +373,8 @@ export function LogiqHub() {
             data={capacityQuery.data ?? null}
             isLoading={capacityQuery.isLoading}
           />
-        </CardContent>
-      </Card>
-    </div>
+        </SettingsPanelBody>
+      </SettingsPanel>
+    </SettingsPage>
   );
 }

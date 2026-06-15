@@ -10,13 +10,15 @@ export function PlatformOpenAccountButton({
   accountId: _accountId,
   accountName: _accountName,
   label = "Support access",
+  className,
 }: Readonly<{
   accountId: string;
   accountName: string;
   label?: string;
+  className?: string;
 }>) {
   return (
-    <Button asChild size="sm" type="button" variant="outline">
+    <Button asChild className={className} size="sm" type="button" variant="outline">
       <Link href="/platform/support">{label}</Link>
     </Button>
   );

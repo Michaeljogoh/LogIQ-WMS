@@ -1,11 +1,25 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useState } from "react";
+import { ClipboardList, Cog, Package, PlayCircle } from "lucide-react";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { useTRPC } from "@/app/trpc/client";
+import { KpiStatCard } from "@/components/charts/kpi-stat-card";
+import {
+  SettingsListItem,
+  SettingsPage,
+  SettingsPanel,
+  SettingsPanelBody,
+  SettingsPanelHeader,
+} from "@/components/settings/settings-page-shell";
+import { PageHeader } from "@/components/shared/page-header";
+import { StatusBadge } from "@/components/shared/status-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -19,6 +33,7 @@ export default function Page() {
   const queryClient = useQueryClient();
   const merchantsQuery = useQuery(trpc.merchant.list.queryOptions());
   const warehousesQuery = useQuery(trpc.warehouse.list.queryOptions());
+  const workOrdersQuery = useQuery(trpc.workOrder.list.queryOptions({}));
   const [merchantId, setMerchantId] = useState("");
   const [warehouseId, setWarehouseId] = useState("");
   const [type, setType] = useState<
@@ -30,6 +45,18 @@ export default function Page() {
   const [qtyPerUnit, setQtyPerUnit] = useState("1");
   const [inputProductId, setInputProductId] = useState("");
 
+  const workOrders = workOrdersQuery.data ?? [];
+  const stats = useMemo(() => {
+    const pending = workOrders.filter((wo) => wo.status === "PENDING").length;
+    const inProgress = workOrders.filter(
+      (wo) => wo.status === "IN_PROGRESS",
+    ).length;
+    const completed = workOrders.filter(
+      (wo) => wo.status === "COMPLETED",
+    ).length;
+    return { pending, inProgress, completed };
+  }, [workOrders]);
+
   const productsQuery = useQuery(
     trpc.product.list.queryOptions({
       merchantId: merchantId || undefined,
@@ -38,11 +65,22 @@ export default function Page() {
     }),
   );
 
-  const createWorkOrder = useMutation(trpc.workOrder.create.mutationOptions());
-  const workOrdersQuery = useQuery(trpc.workOrder.list.queryOptions({}));
+  const createWorkOrder = useMutation(
+    trpc.workOrder.create.mutationOptions({
+      onSuccess: async () => {
+        toast.success("Work order created");
+        await queryClient.invalidateQueries(
+          trpc.workOrder.list.queryFilter({}),
+        );
+      },
+      onError: (err) => toast.error(err.message ?? "Could not create work order"),
+    }),
+  );
+
   const [completeQtyById, setCompleteQtyById] = useState<
     Record<string, string>
   >({});
+
   const startWorkOrder = useMutation(
     trpc.workOrder.start.mutationOptions({
       onSuccess: async () => {
@@ -52,6 +90,7 @@ export default function Page() {
       },
     }),
   );
+
   const completeWorkOrder = useMutation(
     trpc.workOrder.complete.mutationOptions({
       onSuccess: async () => {
@@ -61,6 +100,7 @@ export default function Page() {
       },
     }),
   );
+
   const locationsQuery = useQuery(
     trpc.stockLevel.locations.queryOptions({
       warehouseId: warehouseId || undefined,
@@ -72,104 +112,182 @@ export default function Page() {
       .sort((a, b) => a.label.localeCompare(b.label)) ?? [];
 
   return (
-    <div className="space-y-6 p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>New work order</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid gap-3 md:grid-cols-4">
-            <Select value={merchantId} onValueChange={setMerchantId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Merchant" />
-              </SelectTrigger>
-              <SelectContent>
-                {merchantsQuery.data?.map((merchant) => (
-                  <SelectItem key={merchant.id} value={merchant.id}>
-                    {merchant.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={warehouseId} onValueChange={setWarehouseId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Warehouse" />
-              </SelectTrigger>
-              <SelectContent>
-                {warehousesQuery.data?.map((warehouse) => (
-                  <SelectItem key={warehouse.id} value={warehouse.id}>
-                    {warehouse.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select
-              value={type}
-              onValueChange={(value) => setType(value as typeof type)}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="KITTING">Kitting</SelectItem>
-                <SelectItem value="ASSEMBLY">Assembly</SelectItem>
-                <SelectItem value="BUNDLING">Bundling</SelectItem>
-                <SelectItem value="REPACKAGING">Repackaging</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              type="number"
-              min={1}
-              value={targetQty}
-              onChange={(event) => setTargetQty(event.target.value)}
-              placeholder="Target qty"
-            />
+    <SettingsPage>
+      <PageHeader
+        actions={
+          <Button asChild variant="outline">
+            <Link href="/inbound">Back to inbound</Link>
+          </Button>
+        }
+        description="Create kitting, assembly, bundling, or repackaging work orders for inbound processing."
+        title="New work order"
+      />
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <KpiStatCard
+          accent="warning"
+          hint="Awaiting start"
+          icon={ClipboardList}
+          isLoading={workOrdersQuery.isLoading}
+          label="Pending"
+          value={stats.pending}
+        />
+        <KpiStatCard
+          accent="navy-blue"
+          hint="Currently in progress"
+          icon={PlayCircle}
+          isLoading={workOrdersQuery.isLoading}
+          label="In progress"
+          value={stats.inProgress}
+        />
+        <KpiStatCard
+          accent="success"
+          hint="Finished work orders"
+          icon={Cog}
+          isLoading={workOrdersQuery.isLoading}
+          label="Completed"
+          value={stats.completed}
+        />
+      </div>
+
+      <SettingsPanel>
+        <SettingsPanelHeader
+          description="Define merchant, warehouse, work type, and target quantity."
+          icon={Cog}
+          title="Work order setup"
+        />
+        <SettingsPanelBody className="space-y-5">
+          <div className="dashboard-form-section space-y-4">
+            <p className="text-sm font-semibold text-foreground">Basics</p>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-2">
+                <Label>Merchant</Label>
+                <Select onValueChange={setMerchantId} value={merchantId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Merchant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {merchantsQuery.data?.map((merchant) => (
+                      <SelectItem key={merchant.id} value={merchant.id}>
+                        {merchant.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Warehouse</Label>
+                <Select onValueChange={setWarehouseId} value={warehouseId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Warehouse" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {warehousesQuery.data?.map((warehouse) => (
+                      <SelectItem key={warehouse.id} value={warehouse.id}>
+                        {warehouse.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Type</Label>
+                <Select
+                  onValueChange={(value) => setType(value as typeof type)}
+                  value={type}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="KITTING">Kitting</SelectItem>
+                    <SelectItem value="ASSEMBLY">Assembly</SelectItem>
+                    <SelectItem value="BUNDLING">Bundling</SelectItem>
+                    <SelectItem value="REPACKAGING">Repackaging</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="target-qty">Target qty</Label>
+                <Input
+                  id="target-qty"
+                  min={1}
+                  onChange={(event) => setTargetQty(event.target.value)}
+                  type="number"
+                  value={targetQty}
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-4">
-            <Select value={outputProductId} onValueChange={setOutputProductId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Output product" />
-              </SelectTrigger>
-              <SelectContent>
-                {productsQuery.data?.items.map((product) => (
-                  <SelectItem key={product.id} value={product.id}>
-                    {product.sku} - {product.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Select value={inputProductId} onValueChange={setInputProductId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Input component" />
-              </SelectTrigger>
-              <SelectContent>
-                {productsQuery.data?.items.map((product) => (
-                  <SelectItem key={product.id} value={product.id}>
-                    {product.sku} - {product.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Input
-              type="number"
-              min={1}
-              value={qtyPerUnit}
-              onChange={(event) => setQtyPerUnit(event.target.value)}
-              placeholder="Qty per unit"
-            />
-            <Select value={outputBinId} onValueChange={setOutputBinId}>
-              <SelectTrigger>
-                <SelectValue placeholder="Output bin" />
-              </SelectTrigger>
-              <SelectContent>
-                {warehouseBins.map((bin) => (
-                  <SelectItem key={bin.id} value={bin.id}>
-                    {bin.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="dashboard-form-section space-y-4">
+            <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+              <Package className="size-4 text-muted-foreground" aria-hidden />
+              Products & output bin
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              <div className="space-y-2">
+                <Label>Output product</Label>
+                <Select
+                  onValueChange={setOutputProductId}
+                  value={outputProductId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Output product" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productsQuery.data?.items.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.sku} — {product.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Input component</Label>
+                <Select
+                  onValueChange={setInputProductId}
+                  value={inputProductId}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Input component" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {productsQuery.data?.items.map((product) => (
+                      <SelectItem key={product.id} value={product.id}>
+                        {product.sku} — {product.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="qty-per-unit">Qty per unit</Label>
+                <Input
+                  id="qty-per-unit"
+                  min={1}
+                  onChange={(event) => setQtyPerUnit(event.target.value)}
+                  type="number"
+                  value={qtyPerUnit}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Output bin</Label>
+                <Select onValueChange={setOutputBinId} value={outputBinId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Output bin" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {warehouseBins.map((bin) => (
+                      <SelectItem key={bin.id} value={bin.id}>
+                        {bin.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
           </div>
 
           <Button
@@ -200,82 +318,98 @@ export default function Page() {
           >
             Create work order
           </Button>
-        </CardContent>
-      </Card>
+        </SettingsPanelBody>
+      </SettingsPanel>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Work order execution</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {workOrdersQuery.data?.map((workOrder) => (
-            <div
+      <SettingsPanel>
+        <SettingsPanelHeader
+          description="Start and complete work orders as they move through your inbound workflow."
+          icon={ClipboardList}
+          title="Work order execution"
+        />
+        <SettingsPanelBody className="space-y-3">
+          {workOrders.map((workOrder) => (
+            <SettingsListItem
+              actions={
+                <div className="flex flex-wrap items-center gap-2">
+                  <Input
+                    className="w-24"
+                    min={1}
+                    onChange={(event) =>
+                      setCompleteQtyById((prev) => ({
+                        ...prev,
+                        [workOrder.id]: event.target.value,
+                      }))
+                    }
+                    type="number"
+                    value={
+                      completeQtyById[workOrder.id] ??
+                      String(workOrder.targetQty)
+                    }
+                  />
+                  <Button
+                    disabled={
+                      workOrder.status !== "PENDING" || startWorkOrder.isPending
+                    }
+                    onClick={() =>
+                      startWorkOrder.mutate({ workOrderId: workOrder.id })
+                    }
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                  >
+                    Start
+                  </Button>
+                  <Button
+                    disabled={
+                      workOrder.status !== "IN_PROGRESS" ||
+                      completeWorkOrder.isPending
+                    }
+                    onClick={() =>
+                      completeWorkOrder.mutate({
+                        workOrderId: workOrder.id,
+                        completedQty: Math.max(
+                          1,
+                          Number(
+                            completeQtyById[workOrder.id] ??
+                              String(workOrder.targetQty),
+                          ) || 1,
+                        ),
+                      })
+                    }
+                    size="sm"
+                    type="button"
+                  >
+                    Complete
+                  </Button>
+                </div>
+              }
               key={workOrder.id}
-              className="grid gap-2 rounded-md border p-3 md:grid-cols-5 md:items-center"
             >
-              <div className="text-sm">
-                <p className="font-medium">{workOrder.woNumber}</p>
-                <p className="text-muted-foreground">{workOrder.status}</p>
+              <div className="space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm font-semibold text-foreground">
+                    {workOrder.woNumber}
+                  </p>
+                  <StatusBadge status={workOrder.status} />
+                  <Badge variant="secondary">{workOrder.type}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Target: {workOrder.targetQty}
+                  {workOrder.outputProduct
+                    ? ` · Output: ${workOrder.outputProduct.sku}`
+                    : ""}
+                </p>
               </div>
-              <div className="text-sm">{workOrder.type}</div>
-              <div className="text-sm">
-                Target: {workOrder.targetQty}
-                {workOrder.outputProduct
-                  ? ` | Output: ${workOrder.outputProduct.sku}`
-                  : ""}
-              </div>
-              <Input
-                type="number"
-                min={1}
-                value={
-                  completeQtyById[workOrder.id] ?? String(workOrder.targetQty)
-                }
-                onChange={(event) =>
-                  setCompleteQtyById((prev) => ({
-                    ...prev,
-                    [workOrder.id]: event.target.value,
-                  }))
-                }
-              />
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  disabled={
-                    workOrder.status !== "PENDING" || startWorkOrder.isPending
-                  }
-                  onClick={() =>
-                    startWorkOrder.mutate({ workOrderId: workOrder.id })
-                  }
-                >
-                  Start
-                </Button>
-                <Button
-                  type="button"
-                  disabled={
-                    workOrder.status !== "IN_PROGRESS" ||
-                    completeWorkOrder.isPending
-                  }
-                  onClick={() =>
-                    completeWorkOrder.mutate({
-                      workOrderId: workOrder.id,
-                      completedQty: Math.max(
-                        1,
-                        Number(
-                          completeQtyById[workOrder.id] ??
-                            String(workOrder.targetQty),
-                        ) || 1,
-                      ),
-                    })
-                  }
-                >
-                  Complete
-                </Button>
-              </div>
-            </div>
+            </SettingsListItem>
           ))}
-        </CardContent>
-      </Card>
-    </div>
+          {!workOrdersQuery.isLoading && workOrders.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              No work orders yet. Create one above.
+            </p>
+          ) : null}
+        </SettingsPanelBody>
+      </SettingsPanel>
+    </SettingsPage>
   );
 }

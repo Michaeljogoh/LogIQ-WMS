@@ -10,6 +10,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 export function ChartCard(
   props: Readonly<{
@@ -23,9 +24,14 @@ export function ChartCard(
   }>,
 ) {
   return (
-    <Card className={props.className}>
+    <Card
+      className={cn(
+        "dashboard-chart-card dashboard-surface dashboard-surface-hover ring-0",
+        props.className,
+      )}
+    >
       <CardHeader className="pb-2">
-        <CardTitle className="text-base font-semibold">{props.title}</CardTitle>
+        <CardTitle className="text-base font-bold">{props.title}</CardTitle>
         {props.description ? (
           <CardDescription>{props.description}</CardDescription>
         ) : null}
