@@ -28,7 +28,7 @@ export function NotificationBell() {
           variant="ghost"
           size="icon"
           aria-label="Notifications"
-          className="relative"
+          className="relative transition-all duration-200 hover:bg-primary/10 hover:text-primary"
         >
           <BellIcon className="size-5" />
           {unread > 0 ? (

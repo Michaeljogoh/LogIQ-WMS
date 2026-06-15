@@ -20,7 +20,7 @@ export function PageHeader({
       )}
     >
       <div className="space-y-1 min-w-0">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
+        <h1 className="text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           {title}
         </h1>
         {description ? (

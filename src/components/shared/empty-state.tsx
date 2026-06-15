@@ -18,7 +18,7 @@ export function EmptyState({
   return (
     <div
       className={cn(
-        "flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border/80 bg-muted/20 px-6 py-16 text-center",
+        "dashboard-empty-state flex flex-col items-center justify-center gap-3 px-6 py-16 text-center",
         className,
       )}
     >

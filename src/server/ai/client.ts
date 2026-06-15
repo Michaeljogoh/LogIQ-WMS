@@ -2,7 +2,7 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import type { LanguageModel } from "ai";
 
 export const DEFAULT_GEMINI_MODEL =
-  process.env.GEMINI_MODEL ?? "gemini-2.0-flash";
+  process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
 
 /**
  * Returns a configured Gemini language model, or null if the API key is not set.

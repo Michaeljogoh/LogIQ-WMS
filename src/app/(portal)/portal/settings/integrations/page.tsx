@@ -1,10 +1,40 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  Link2,
+  Plug,
+  RefreshCw,
+  ShoppingBag,
+  Unplug,
+} from "lucide-react";
 import Link from "next/link";
+import { useMemo, useState } from "react";
 import { useTRPC } from "@/app/trpc/client";
+import { KpiStatCard } from "@/components/charts/kpi-stat-card";
+import {
+  SettingsPage,
+  SettingsPanel,
+  SettingsPanelBody,
+  SettingsPanelHeader,
+  SettingsTableWrap,
+} from "@/components/settings/settings-page-shell";
+import { PageHeader } from "@/components/shared/page-header";
+import {
+  paginateRows,
+  TablePagination,
+} from "@/components/shared/table-pagination";
+import { StatusBadge } from "@/components/shared/status-badge";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 const platforms = [
   "SHOPIFY",
@@ -15,20 +45,42 @@ const platforms = [
   "EBAY",
 ] as const;
 
+const LOG_PAGE_SIZE = 6;
+
+type IntegrationListItem = {
+  id: string;
+  type: string;
+  status: string;
+  metadata: unknown;
+  lastSyncAt: Date | null;
+};
+
+function formatPlatform(platform: string) {
+  return platform
+    .toLowerCase()
+    .split("_")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
 export default function Page() {
   const trpc = useTRPC();
   const queryClient = useQueryClient();
+  const [logPage, setLogPage] = useState(0);
   const integrationsQuery = useQuery(trpc.integration.list.queryOptions());
+  const syncLogsQuery = useQuery(trpc.integration.getSyncLog.queryOptions({}));
+
   const syncNow = useMutation(
     trpc.integration.syncNow.mutationOptions({
       onSuccess: async () => {
-        await queryClient.invalidateQueries(
-          trpc.integration.list.queryFilter(),
-        );
+        await Promise.all([
+          queryClient.invalidateQueries(trpc.integration.list.queryFilter()),
+          queryClient.invalidateQueries(trpc.integration.getSyncLog.queryFilter()),
+        ]);
       },
     }),
   );
-  const syncLogsQuery = useQuery(trpc.integration.getSyncLog.queryOptions({}));
+
   const disconnect = useMutation(
     trpc.integration.disconnect.mutationOptions({
       onSuccess: async () => {
@@ -38,109 +90,216 @@ export default function Page() {
       },
     }),
   );
-  const integrations = (integrationsQuery.data ?? []) as Array<{
-    id: string;
-    type: (typeof platforms)[number];
-    status: string;
-    lastSyncAt: Date | string | null;
-    metadata: unknown;
-  }>;
+
+  const integrations = (integrationsQuery.data ?? []) as IntegrationListItem[];
+  const syncLogs = syncLogsQuery.data ?? [];
+  const pageLogs = paginateRows(syncLogs, logPage, LOG_PAGE_SIZE);
+
+  const stats = useMemo(() => {
+    const connected = integrations.filter((i) => i.status === "CONNECTED").length;
+    const orders = integrations.reduce((sum, item) => {
+      if (item.metadata && typeof item.metadata === "object") {
+        return (
+          sum +
+          Number((item.metadata as { orderCount?: number }).orderCount ?? 0)
+        );
+      }
+      return sum;
+    }, 0);
+    return { connected, orders, total: platforms.length };
+  }, [integrations]);
 
   return (
-    <div className="space-y-6 p-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Marketplace integrations</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {platforms.map((platform) => {
-            const integration = integrations.find(
-              (item) => item.type === platform,
-            );
-            return (
-              <div
-                key={platform}
-                className="grid gap-2 rounded-md border p-3 md:grid-cols-6 md:items-center"
-              >
-                <p className="font-medium">{platform}</p>
-                <p>{integration?.status ?? "NOT_CONNECTED"}</p>
-                <p>
-                  Last sync:{" "}
-                  {integration?.lastSyncAt
-                    ? new Date(integration.lastSyncAt).toLocaleString()
-                    : "Never"}
-                </p>
-                <p>
-                  Orders:{" "}
-                  {integration?.metadata &&
-                  typeof integration.metadata === "object"
-                    ? String(
-                        (integration.metadata as { orderCount?: number })
-                          .orderCount ?? 0,
-                      )
-                    : "0"}
-                </p>
-                <div>
-                  <Link
-                    href={`/portal/settings/integrations/${platform.toLowerCase()}/connect`}
-                    className="text-primary hover:underline"
-                  >
-                    Connect
-                  </Link>
-                </div>
-                <div className="flex gap-2">
-                  {integration ? (
-                    <>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        disabled={syncNow.isPending}
-                        onClick={() =>
-                          syncNow.mutate({ integrationId: integration.id })
-                        }
+    <SettingsPage>
+      <PageHeader
+        description="Connect marketplaces and sync orders into your 3PL fulfillment workflow."
+        title="Integrations"
+      />
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <KpiStatCard
+          accent="navy-blue"
+          hint="Available marketplaces"
+          icon={ShoppingBag}
+          isLoading={integrationsQuery.isLoading}
+          label="Platforms"
+          value={stats.total}
+        />
+        <KpiStatCard
+          accent="success"
+          hint="Live order sync"
+          icon={Plug}
+          isLoading={integrationsQuery.isLoading}
+          label="Connected"
+          value={stats.connected}
+        />
+        <KpiStatCard
+          accent="navy-teal"
+          hint="Imported via integrations"
+          icon={RefreshCw}
+          isLoading={integrationsQuery.isLoading}
+          label="Orders synced"
+          value={stats.orders}
+        />
+      </div>
+
+      <SettingsPanel>
+        <SettingsPanelHeader
+          description="Connect, sync, or disconnect each sales channel."
+          icon={Link2}
+          title="Marketplace connections"
+        />
+        <SettingsPanelBody>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+            {platforms.map((platform) => {
+              const integration = integrations.find(
+                (item) => item.type === platform,
+              );
+              const orderCount =
+                integration?.metadata &&
+                typeof integration.metadata === "object"
+                  ? Number(
+                      (integration.metadata as { orderCount?: number })
+                        .orderCount ?? 0,
+                    )
+                  : 0;
+
+              return (
+                <article
+                  className="portal-integration-card group"
+                  key={platform}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="portal-integration-card__title text-sm font-bold">
+                        {formatPlatform(platform)}
+                      </p>
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        {integration?.lastSyncAt
+                          ? `Last sync ${new Date(integration.lastSyncAt).toLocaleString()}`
+                          : "Never synced"}
+                      </p>
+                    </div>
+                    <StatusBadge
+                      status={integration?.status ?? "NOT_CONNECTED"}
+                    />
+                  </div>
+                  <p className="mt-3 text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground tabular-nums">
+                      {orderCount}
+                    </span>{" "}
+                    orders imported
+                  </p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Button asChild size="sm" variant="outline">
+                      <Link
+                        href={`/portal/settings/integrations/${platform.toLowerCase()}/connect`}
                       >
-                        Sync
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        disabled={disconnect.isPending}
-                        onClick={() =>
-                          disconnect.mutate({ integrationId: integration.id })
-                        }
-                      >
-                        Disconnect
-                      </Button>
-                    </>
-                  ) : null}
-                </div>
-              </div>
-            );
-          })}
-        </CardContent>
-      </Card>
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent sync logs</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          {syncLogsQuery.data?.map((log) => (
-            <div key={log.id} className="rounded-md border p-3">
-              <p className="font-medium">
-                {log.integration.type} - {log.status}
-              </p>
-              <p>
-                fetched: {log.ordersFetched} | upserted: {log.ordersUpserted}
-              </p>
-              <p>{new Date(log.createdAt).toLocaleString()}</p>
-              {log.errorMessage ? (
-                <p className="text-destructive">{log.errorMessage}</p>
-              ) : null}
-            </div>
-          ))}
-          {!syncLogsQuery.data?.length ? <p>No sync activity yet.</p> : null}
-        </CardContent>
-      </Card>
-    </div>
+                        {integration ? "Manage" : "Connect"}
+                      </Link>
+                    </Button>
+                    {integration ? (
+                      <>
+                        <Button
+                          disabled={syncNow.isPending}
+                          onClick={() =>
+                            syncNow.mutate({ integrationId: integration.id })
+                          }
+                          size="sm"
+                          type="button"
+                          variant="secondary"
+                        >
+                          <RefreshCw className="size-3.5" aria-hidden />
+                          Sync
+                        </Button>
+                        <Button
+                          disabled={disconnect.isPending}
+                          onClick={() =>
+                            disconnect.mutate({ integrationId: integration.id })
+                          }
+                          size="sm"
+                          type="button"
+                          variant="destructive"
+                        >
+                          <Unplug className="size-3.5" aria-hidden />
+                        </Button>
+                      </>
+                    ) : null}
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </SettingsPanelBody>
+      </SettingsPanel>
+
+      <SettingsPanel>
+        <SettingsPanelHeader
+          description="Recent sync attempts across all connected channels."
+          icon={RefreshCw}
+          title="Sync activity"
+        />
+        <SettingsPanelBody className="p-0">
+          {syncLogsQuery.isLoading ? (
+            <p className="p-6 text-sm text-muted-foreground">Loading…</p>
+          ) : syncLogs.length === 0 ? (
+            <p className="p-6 text-sm text-muted-foreground">
+              No sync activity yet. Connect a marketplace to start importing
+              orders.
+            </p>
+          ) : (
+            <>
+              <SettingsTableWrap>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Platform</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Fetched</TableHead>
+                      <TableHead>Upserted</TableHead>
+                      <TableHead>When</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {pageLogs.map((log) => (
+                      <TableRow className="logiq-table-row" key={log.id}>
+                        <TableCell className="font-medium">
+                          {formatPlatform(log.integration.type)}
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              log.status === "SUCCESS" ? "success" : "destructive"
+                            }
+                          >
+                            {log.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {log.ordersFetched}
+                        </TableCell>
+                        <TableCell className="tabular-nums">
+                          {log.ordersUpserted}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {new Date(log.createdAt).toLocaleString()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </SettingsTableWrap>
+              <TablePagination
+                label="Sync logs"
+                onPageChange={setLogPage}
+                page={logPage}
+                pageSize={LOG_PAGE_SIZE}
+                total={syncLogs.length}
+              />
+            </>
+          )}
+        </SettingsPanelBody>
+      </SettingsPanel>
+    </SettingsPage>
   );
 }

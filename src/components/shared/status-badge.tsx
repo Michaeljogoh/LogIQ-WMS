@@ -44,9 +44,11 @@ const STATUS_MAP: Record<string, { label: string; variant: StatusVariant }> = {
 
   // Integrations
   CONNECTED: { label: "Connected", variant: "success" },
+  NOT_CONNECTED: { label: "Not connected", variant: "neutral" },
   ERROR: { label: "Error", variant: "danger" },
   DISCONNECTED: { label: "Disconnected", variant: "neutral" },
   PENDING_AUTH: { label: "Pending auth", variant: "warning" },
+  SUCCESS: { label: "Success", variant: "success" },
 
   // Pick lists
   IN_PROGRESS: { label: "In progress", variant: "primary" },
@@ -56,6 +58,22 @@ const STATUS_MAP: Record<string, { label: string; variant: StatusVariant }> = {
   RECONCILED: { label: "Reconciled", variant: "success" },
   ACTIVE: { label: "Active", variant: "primary" },
   SHIPPED: { label: "Shipped", variant: "info" },
+
+  // Stock movements
+  INBOUND: { label: "Inbound", variant: "success" },
+  OUTBOUND: { label: "Outbound", variant: "danger" },
+  RECEIVE: { label: "Receive", variant: "success" },
+  PICK: { label: "Pick", variant: "danger" },
+  ADJUST: { label: "Adjust", variant: "warning" },
+  ADJUSTMENT: { label: "Adjustment", variant: "warning" },
+  TRANSFER: { label: "Transfer", variant: "info" },
+  CYCLE_COUNT: { label: "Cycle count", variant: "primary" },
+  CYCLE_COUNT_ADJUSTMENT: { label: "Cycle count", variant: "primary" },
+  RETURN: { label: "Return", variant: "warning" },
+  RETURN_RESTOCK: { label: "Return restock", variant: "success" },
+  RETURN_DISPOSE: { label: "Return dispose", variant: "danger" },
+  WORK_ORDER_CONSUME: { label: "WO consume", variant: "danger" },
+  WORK_ORDER_PRODUCE: { label: "WO produce", variant: "success" },
 
   // Generic
   TRUE: { label: "Yes", variant: "success" },
@@ -91,6 +109,7 @@ export function StatusBadge({
 
   return (
     <span
+      data-slot="status-badge"
       className={cn(
         "inline-flex items-center rounded-full border px-2 py-0.5 text-[11px] font-medium leading-4",
         VARIANT_CLASSES[variant],

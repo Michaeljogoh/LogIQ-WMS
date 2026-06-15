@@ -202,9 +202,9 @@ export function PlatformSupportConsole() {
   return (
     <div className="space-y-6">
       {active ? (
-        <Card className="border-amber-300 bg-amber-50/80 dark:border-amber-900 dark:bg-amber-950/30">
+        <Card className="platform-support-alert platform-support-alert--active ring-0">
           <CardHeader className="pb-2">
-            <CardTitle className="text-base">
+            <CardTitle className="text-base font-bold">
               Active support session — {active.level === "READ_ONLY" ? "Level 1 (read-only)" : "Level 3 (emergency)"}
             </CardTitle>
             <CardDescription>
@@ -230,17 +230,26 @@ export function PlatformSupportConsole() {
         </Card>
       ) : null}
 
-      <Tabs defaultValue="level1">
-        <TabsList className="flex h-auto flex-wrap">
-          <TabsTrigger value="level1">Level 1 — Read-only</TabsTrigger>
-          <TabsTrigger value="level2">Level 2 — Escalated actions</TabsTrigger>
-          <TabsTrigger value="level3">Level 3 — Emergency</TabsTrigger>
+      <Tabs className="platform-support-tabs" defaultValue="level1">
+        <TabsList className="flex h-auto w-full flex-wrap sm:w-fit">
+          <TabsTrigger className="platform-support-tab-trigger" value="level1">
+            Level 1 — Read-only
+          </TabsTrigger>
+          <TabsTrigger className="platform-support-tab-trigger" value="level2">
+            Level 2 — Escalated actions
+          </TabsTrigger>
+          <TabsTrigger
+            className="platform-support-tab-trigger platform-support-tab-trigger--danger"
+            value="level3"
+          >
+            Level 3 — Emergency
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent className="mt-4 space-y-4" value="level1">
-          <Card>
+          <Card className="dashboard-chart-card platform-support-panel ring-0">
             <CardHeader>
-              <CardTitle className="text-base">Read-only support (default)</CardTitle>
+              <CardTitle className="text-base font-bold">Read-only support (default)</CardTitle>
               <CardDescription>
                 Browse dashboards, inventory, orders, configuration, and analytics
                 without mutating tenant data. All write APIs are blocked.
@@ -266,7 +275,7 @@ export function PlatformSupportConsole() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2 sm:col-span-2">
+                <div className="platform-support-form-field space-y-2 sm:col-span-2">
                   <Label>Reason</Label>
                   <Textarea
                     onChange={(e) => setReadOnlyReason(e.target.value)}
@@ -283,9 +292,9 @@ export function PlatformSupportConsole() {
         </TabsContent>
 
         <TabsContent className="mt-4 space-y-4" value="level2">
-          <Card>
+          <Card className="dashboard-chart-card platform-support-panel ring-0">
             <CardHeader>
-              <CardTitle className="text-base">Escalated support actions</CardTitle>
+              <CardTitle className="text-base font-bold">Escalated support actions</CardTitle>
               <CardDescription>
                 Run a single approved fix with mandatory reason and confirmation.
                 Each action is audit-logged.
@@ -399,9 +408,9 @@ export function PlatformSupportConsole() {
         </TabsContent>
 
         <TabsContent className="mt-4 space-y-4" value="level3">
-          <Card className="border-destructive/40">
+          <Card className="dashboard-chart-card platform-support-panel platform-support-panel--danger ring-0">
             <CardHeader>
-              <CardTitle className="text-base text-destructive">
+              <CardTitle className="text-base font-bold text-destructive">
                 Emergency impersonation
               </CardTitle>
               <CardDescription>
@@ -466,7 +475,7 @@ export function PlatformSupportConsole() {
               </Button>
 
               {approvedRequest ? (
-                <div className="rounded-md border border-destructive/30 bg-destructive/5 p-4 space-y-3">
+                <div className="platform-support-approved-box space-y-3 p-4">
                   <p className="text-sm font-medium">
                     Approved: {approvedRequest.accountName}
                   </p>
@@ -501,16 +510,21 @@ export function PlatformSupportConsole() {
 
       </Tabs>
 
-      <Card>
+      <Card className="dashboard-chart-card platform-support-audit ring-0">
         <CardHeader className="flex flex-row items-center justify-between gap-4">
           <div>
-            <CardTitle className="text-base">Audit trail</CardTitle>
+            <CardTitle className="text-base font-bold">Audit trail</CardTitle>
             <CardDescription>
               All platform support events are recorded with admin, tenant, reason,
               and IP.
             </CardDescription>
           </div>
-          <Button asChild size="sm" variant="outline">
+          <Button
+            asChild
+            className="platform-support-audit-link transition-all duration-200"
+            size="sm"
+            variant="outline"
+          >
             <Link href="/platform/audit">View full audit log</Link>
           </Button>
         </CardHeader>

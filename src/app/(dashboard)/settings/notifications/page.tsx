@@ -1,16 +1,40 @@
 "use client";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { AlertTriangle, Bell, Info, MessageSquare } from "lucide-react";
 import { useMemo } from "react";
 import { useTRPC } from "@/app/trpc/client";
+import { KpiStatCard } from "@/components/charts/kpi-stat-card";
+import {
+  SettingsPage,
+  SettingsPanel,
+  SettingsPanelBody,
+  SettingsPanelHeader,
+  SettingsTableWrap,
+} from "@/components/settings/settings-page-shell";
 import { PageHeader } from "@/components/shared/page-header";
 import { SlackConnectButton } from "@/components/shared/slack-connect-button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useOperatorRole } from "@/hooks/use-operator-role";
+import { cn } from "@/lib/utils";
 
 const severities = ["INFO", "WARNING", "CRITICAL"] as const;
+
+const SEVERITY_META = {
+  CRITICAL: { badge: "destructive" as const, className: "settings-escalation-section--critical" },
+  WARNING: { badge: "warning" as const, className: "settings-escalation-section--warning" },
+  INFO: { badge: "info" as const, className: "settings-escalation-section--info" },
+};
 
 export default function Page() {
   const trpc = useTRPC();
@@ -42,6 +66,8 @@ export default function Page() {
     }),
   );
 
+  const preferences = preferencesQuery.data ?? [];
+
   const rulesBySeverity = useMemo(
     () =>
       new Map(
@@ -50,80 +76,131 @@ export default function Page() {
     [escalationQuery.data],
   );
 
+  const channelCount = useMemo(() => {
+    let count = 0;
+    for (const row of preferences) {
+      if (row.inApp) count++;
+      if (row.email) count++;
+      if (row.slack) count++;
+      if (row.sms) count++;
+      if (row.push) count++;
+    }
+    return count;
+  }, [preferences]);
+
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <SettingsPage>
       <PageHeader
+        description="Configure how and when you receive alerts across in-app, email, Slack, SMS, and push."
         title="Notifications"
-        description="Configure how and when you receive alerts."
       />
-      <Card>
-        <CardHeader>
-          <CardTitle>Notification preferences</CardTitle>
-        </CardHeader>
-        <CardContent className="overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b">
-                <th className="px-2 py-2 text-left">Type</th>
-                <th className="px-2 py-2 text-left">In App</th>
-                <th className="px-2 py-2 text-left">Email</th>
-                <th className="px-2 py-2 text-left">Slack</th>
-                <th className="px-2 py-2 text-left">SMS</th>
-                <th className="px-2 py-2 text-left">Push</th>
-              </tr>
-            </thead>
-            <tbody>
-              {(preferencesQuery.data ?? []).map((row) => (
-                <tr key={row.id} className="border-b">
-                  <td className="px-2 py-2">{row.type}</td>
-                  {(
-                    [
-                      ["inApp", row.inApp],
-                      ["email", row.email],
-                      ["slack", row.slack],
-                      ["sms", row.sms],
-                      ["push", row.push],
-                    ] as const
-                  ).map(([field, checked]) => (
-                    <td key={field} className="px-2 py-2">
-                      <Switch
-                        checked={checked}
-                        onCheckedChange={(value) =>
-                          updatePreference.mutate({
-                            type: row.type,
-                            [field]: value,
-                          })
-                        }
-                      />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </CardContent>
-      </Card>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <KpiStatCard
+          accent="navy-blue"
+          hint="Alert categories you can configure"
+          icon={Bell}
+          isLoading={preferencesQuery.isLoading}
+          label="Notification types"
+          value={preferences.length}
+        />
+        <KpiStatCard
+          accent="navy-teal"
+          hint="Enabled delivery channels"
+          icon={MessageSquare}
+          isLoading={preferencesQuery.isLoading}
+          label="Channels active"
+          value={channelCount}
+        />
+        <KpiStatCard
+          accent="navy-violet"
+          hint={canManageEscalationRules ? "Severity-based escalation" : "Owner access required"}
+          icon={AlertTriangle}
+          isLoading={escalationQuery.isLoading}
+          label="Escalation rules"
+          value={canManageEscalationRules ? severities.length : "—"}
+        />
+      </div>
+
+      <SettingsPanel>
+        <SettingsPanelHeader
+          description="Toggle delivery channels for each notification type."
+          icon={Bell}
+          title="Notification preferences"
+        />
+        <SettingsPanelBody>
+          <SettingsTableWrap>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Type</TableHead>
+                  <TableHead>In App</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Slack</TableHead>
+                  <TableHead>SMS</TableHead>
+                  <TableHead>Push</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {preferences.map((row) => (
+                  <TableRow key={row.id}>
+                    <TableCell className="font-medium">{row.type}</TableCell>
+                    {(
+                      [
+                        ["inApp", row.inApp],
+                        ["email", row.email],
+                        ["slack", row.slack],
+                        ["sms", row.sms],
+                        ["push", row.push],
+                      ] as const
+                    ).map(([field, checked]) => (
+                      <TableCell key={field}>
+                        <Switch
+                          checked={checked}
+                          onCheckedChange={(value) =>
+                            updatePreference.mutate({
+                              type: row.type,
+                              [field]: value,
+                            })
+                          }
+                        />
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </SettingsTableWrap>
+        </SettingsPanelBody>
+      </SettingsPanel>
 
       {canManageEscalationRules ? (
-        <Card>
-          <CardHeader>
-            <CardTitle>Escalation rules</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <SettingsPanel>
+          <SettingsPanelHeader
+            description="Define ack windows and escalation paths for unacknowledged alerts."
+            icon={AlertTriangle}
+            title="Escalation rules"
+          />
+          <SettingsPanelBody className="space-y-4">
             {severities.map((severity) => {
               const current = rulesBySeverity.get(severity);
+              const meta = SEVERITY_META[severity];
               return (
-                <div key={severity} className="rounded-md border p-3">
-                  <p className="text-sm font-semibold">{severity}</p>
-                  <div className="mt-3 grid gap-3 md:grid-cols-3">
+                <div
+                  className={cn("settings-escalation-section", meta.className)}
+                  key={severity}
+                >
+                  <div className="mb-3 flex items-center gap-2">
+                    <Badge variant={meta.badge}>{severity}</Badge>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-3">
                     <div className="space-y-1">
                       <p className="text-xs text-muted-foreground">
                         Ack window (mins)
                       </p>
                       <Input
-                        type="number"
-                        min={1}
                         defaultValue={current?.ackWindowMinutes ?? 120}
+                        min={1}
                         onBlur={(event) =>
                           upsertRule.mutate({
                             severity,
@@ -135,6 +212,7 @@ export default function Page() {
                             escalateViaSms: current?.escalateViaSms ?? true,
                           })
                         }
+                        type="number"
                       />
                     </div>
                     <div className="space-y-1">
@@ -176,18 +254,20 @@ export default function Page() {
                 </div>
               );
             })}
-          </CardContent>
-        </Card>
+          </SettingsPanelBody>
+        </SettingsPanel>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Slack channel</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <SettingsPanel>
+        <SettingsPanelHeader
+          description="Connect a Slack workspace to receive alerts in a channel."
+          icon={Info}
+          title="Slack channel"
+        />
+        <SettingsPanelBody>
           <SlackConnectButton />
-        </CardContent>
-      </Card>
-    </div>
+        </SettingsPanelBody>
+      </SettingsPanel>
+    </SettingsPage>
   );
 }

@@ -26,6 +26,7 @@ export function DashboardFeatureGrid(
     description?: string;
     links: DashboardFeatureLink[];
     columns?: 2 | 3 | 4;
+    variant?: "default" | "platform";
   }>,
 ) {
   const cols =
@@ -35,11 +36,20 @@ export function DashboardFeatureGrid(
         ? "sm:grid-cols-2 lg:grid-cols-4"
         : "sm:grid-cols-2 lg:grid-cols-3";
 
+  const isPlatform = props.variant === "platform";
+
   return (
-    <Card>
+    <Card
+      className={cn(
+        "dashboard-surface dashboard-surface-hover ring-0",
+        isPlatform
+          ? "platform-modules-shell dashboard-chart-card"
+          : "dashboard-chart-card",
+      )}
+    >
       {props.title ? (
         <CardHeader>
-          <CardTitle className="text-base">{props.title}</CardTitle>
+          <CardTitle className="text-base font-bold">{props.title}</CardTitle>
           {props.description ? (
             <CardDescription>{props.description}</CardDescription>
           ) : null}
@@ -50,21 +60,42 @@ export function DashboardFeatureGrid(
           <Link
             key={link.href}
             href={link.href}
-            className="group flex flex-col rounded-xl border border-border/60 bg-card p-4 transition-all hover:border-[#3874ff]/40 hover:bg-muted/30 hover:shadow-sm"
+            className={cn(
+              "group flex flex-col p-4 transition-all duration-200 ease-[cubic-bezier(0.4,0,0.2,1)]",
+              isPlatform ? "platform-module-card" : "workspace-module-card",
+            )}
           >
-            <link.icon className="mb-3 size-5 text-[#3874ff]" aria-hidden />
-            <span className="flex items-center gap-2 text-sm font-semibold">
+            <link.icon
+              className={cn(
+                "platform-module-icon mb-3 size-5 transition-colors duration-200",
+                isPlatform ? "text-[#0b213a] dark:text-white/90" : "text-primary",
+              )}
+              aria-hidden
+            />
+            <span className="platform-module-title flex items-center gap-2 text-sm font-semibold transition-colors duration-200">
               {link.title}
               {link.badge ? (
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
+                <span
+                  className={cn(
+                    "platform-module-badge rounded-full px-2 py-0.5 text-[10px] font-medium transition-colors duration-200",
+                    isPlatform
+                      ? "bg-[#0b213a]/8 text-[#0b213a] dark:bg-white/10 dark:text-white"
+                      : "bg-primary/10 text-primary",
+                  )}
+                >
                   {link.badge}
                 </span>
               ) : null}
             </span>
-            <span className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+            <span className="platform-module-desc mt-1 line-clamp-2 text-xs text-muted-foreground transition-colors duration-200">
               {link.description}
             </span>
-            <span className="mt-3 inline-flex items-center text-xs font-medium text-[#3874ff] opacity-0 transition-opacity group-hover:opacity-100">
+            <span
+              className={cn(
+                "platform-module-cta mt-3 inline-flex items-center text-xs font-medium opacity-0 transition-all duration-200 group-hover:opacity-100",
+                isPlatform ? "text-[#1a4fd6]" : "text-primary",
+              )}
+            >
               Open
               <ArrowRightIcon className="ml-1 size-3.5" />
             </span>
