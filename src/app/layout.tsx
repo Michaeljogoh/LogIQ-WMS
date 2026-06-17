@@ -19,6 +19,10 @@ export const metadata: Metadata = {
   title: "LogIQ WMS",
   description:
     "Multi-tenant warehouse management for 3PL operators and brands.",
+  icons: {
+    icon: "/brand/logiq-logo.svg",
+    apple: "/brand/logiq-logo.svg",
+  },
 };
 
 export default function RootLayout({

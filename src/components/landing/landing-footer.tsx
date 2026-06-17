@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { LogIQLogo } from "@/components/brand/logiq-logo";
 import { LandingReveal } from "@/components/landing/landing-reveal";
 
 const FOOTER_LINKS = {
@@ -25,17 +26,8 @@ export function LandingFooter() {
       <LandingReveal className="mx-auto max-w-6xl">
         <div className="grid gap-10 sm:grid-cols-2 lg:grid-cols-4">
           <div className="lg:col-span-1">
-            <Link
-              href="/"
-              className="landing-display inline-flex items-center gap-2.5 text-[15px] font-semibold tracking-[-0.02em] text-[var(--landing-ink)]"
-            >
-              <span
-                aria-hidden
-                className="flex size-7 items-center justify-center rounded-md bg-[var(--landing-accent)] text-xs font-bold text-white"
-              >
-                LQ
-              </span>
-              LogIQ WMS
+            <Link href="/">
+              <LogIQLogo bold height={48} variant="on-dark" />
             </Link>
             <p className="mt-3 max-w-xs text-sm leading-relaxed text-[var(--landing-ink-subtle)]">
               The intelligent warehouse operating system for modern 3PLs.

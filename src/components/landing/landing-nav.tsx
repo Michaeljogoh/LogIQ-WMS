@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRightIcon, MenuIcon, XIcon } from "lucide-react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { useState } from "react";
+import { LogIQLogo } from "@/components/brand/logiq-logo";
 import { landingTransition, LANDING_DURATION } from "@/components/landing/landing-motion";
 import { cn } from "@/lib/utils";
 
@@ -29,17 +30,8 @@ export function LandingNav() {
       transition={landingTransition(LANDING_DURATION.fast)}
     >
       <div className="relative flex h-16 w-full items-center px-3 sm:h-[4.25rem] sm:px-4">
-        <Link
-          href="/"
-          className="landing-display relative z-10 flex shrink-0 items-center gap-2.5 text-[15px] font-bold tracking-[-0.02em] text-[var(--landing-ink)]"
-        >
-          <span
-            aria-hidden
-            className="flex size-7 items-center justify-center rounded-full bg-[var(--landing-accent)] text-xs font-bold text-white"
-          >
-            LQ
-          </span>
-          LogIQ WMS
+        <Link href="/" className="relative z-10 shrink-0">
+          <LogIQLogo bold height={52} variant="on-dark" />
         </Link>
 
         <nav
