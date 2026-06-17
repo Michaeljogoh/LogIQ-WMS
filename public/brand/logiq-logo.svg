@@ -1,0 +1,14 @@
+<svg fill="none" viewBox="0 0 220 120" xmlns="http://www.w3.org/2000/svg">
+  <path d="M 40 26 L 69.44365098103784 43 L 69.44365098103784 77 L 40 94 L 10.55634901896216 77 L 10.55634901896216 43 Z" stroke="#4DB8E9" stroke-linejoin="round" stroke-width="3.25" />
+  <circle cx="40" cy="26" fill="#6FD4FF" r="4.25" stroke="#4DB8E9" stroke-width="1.5" />
+  <circle cx="69.44365098103784" cy="43" fill="#6FD4FF" r="4.25" stroke="#4DB8E9" stroke-width="1.5" />
+  <circle cx="69.44365098103784" cy="77" fill="#6FD4FF" r="4.25" stroke="#4DB8E9" stroke-width="1.5" />
+  <circle cx="40" cy="94" fill="#6FD4FF" r="4.25" stroke="#4DB8E9" stroke-width="1.5" />
+  <circle cx="10.55634901896216" cy="77" fill="#6FD4FF" r="4.25" stroke="#4DB8E9" stroke-width="1.5" />
+  <circle cx="10.55634901896216" cy="43" fill="#6FD4FF" r="4.25" stroke="#4DB8E9" stroke-width="1.5" />
+  <path d="M 40 37 L 59.91931062937075 48.5 L 59.91931062937075 71.5 L 40 83 L 20.08068937062925 71.5 L 20.08068937062925 48.5 Z" fill="#132238" />
+  <text fill="#6FD4FF" font-family="system-ui, sans-serif" font-size="17" font-weight="800" text-anchor="middle" x="40" y="66">IQ</text>
+  <text fill="#FFFFFF" font-family="system-ui, sans-serif" font-size="34" font-weight="800" letter-spacing="-0.02em" x="82" y="46">Log</text>
+  <text fill="#4DB8E9" font-family="system-ui, sans-serif" font-size="22" font-weight="800" letter-spacing="0.28em" x="82" y="74">WMS</text>
+  <text fill="#7A9BB8" font-family="system-ui, sans-serif" font-size="10.5" font-weight="700" letter-spacing="0.34em" x="82" y="96">3PL PLATFORM</text>
+</svg>
