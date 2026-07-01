@@ -1,4 +1,4 @@
-# ShipCore
+# LogIQ-WMS
 
 **The intelligent warehouse operating system for modern 3PLs**
 
