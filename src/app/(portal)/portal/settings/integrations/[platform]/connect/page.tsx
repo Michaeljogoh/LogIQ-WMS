@@ -62,24 +62,22 @@ export default function Page() {
   const oauthUrlQuery = useQuery({
     ...trpc.integration.getOAuthUrl.queryOptions({
       type: integrationType,
-      ...(integrationType === "SHOPIFY"
-        ? { shopDomain: trimmedShopDomain }
-        : {}),
+      shopDomain:
+        integrationType === "SHOPIFY" ? trimmedShopDomain : undefined,
     }),
     enabled:
       integrationType !== "SHOPIFY" || trimmedShopDomain.length > 0,
   });
-  const handleCallback = useMutation(
-    trpc.integration.handleCallback.mutationOptions({
-      onSuccess: () => {
-        toast.success(`${formatPlatform(platform)} connected successfully`);
-        router.push("/portal/settings/integrations");
-      },
-      onError: (error) => {
-        toast.error(error.message ?? "Could not complete connection");
-      },
-    }),
-  );
+  const handleCallback = useMutation({
+    ...trpc.integration.handleCallback.mutationOptions(),
+    onSuccess: () => {
+      toast.success(`${formatPlatform(platform)} connected successfully`);
+      router.push("/portal/settings/integrations");
+    },
+    onError: (error) => {
+      toast.error(error.message ?? "Could not complete connection");
+    },
+  });
 
   const isConnected = handleCallback.isSuccess;
 
