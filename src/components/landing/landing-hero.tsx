@@ -15,7 +15,7 @@ import { LandingReveal } from "@/components/landing/landing-reveal";
 import { LandingProductPreview } from "@/components/landing/landing-product-preview";
 import { cn } from "@/lib/utils";
 
-const HERO_IMAGE = "/images/landing/hero-warehouse.jpg";
+const HERO_IMAGE = "/images/landing/shipping.jpeg";
 
 const copyStagger = {
   ...landingStaggerContainer,
